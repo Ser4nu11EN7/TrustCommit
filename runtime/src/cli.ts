@@ -68,6 +68,15 @@ program
   });
 
 program
+  .command("task:verify")
+  .requiredOption("--id <id>")
+  .action(async (options) => {
+    const runtime = new TrustCommitRuntime();
+    const report = await runtime.verifyTask(options.id);
+    console.log(JSON.stringify(report, null, 2));
+  });
+
+program
   .command("task:run")
   .requiredOption("--id <id>")
   .action(async (options) => {
@@ -107,6 +116,15 @@ program
   });
 
 program
+  .command("arbiter:auto")
+  .requiredOption("--id <id>")
+  .action(async (options) => {
+    const runtime = new TrustCommitRuntime();
+    const task = await runtime.arbiterAutoReview(options.id);
+    console.log(JSON.stringify(task, null, 2));
+  });
+
+program
   .command("providers:health")
   .option("--refresh", "Force a live provider probe instead of cache")
   .action(async (options) => {
@@ -130,6 +148,26 @@ program
   .action(async () => {
     const runtime = new TrustCommitRuntime();
     const result = await runtime.demoRun();
+    console.log(
+      JSON.stringify(
+        {
+          taskId: result.task.id,
+          covenantId: result.task.covenantId,
+          status: result.status,
+          executorBalance: result.executorBalance.toString()
+        },
+        null,
+        2
+      )
+    );
+  });
+
+program
+  .command("demo:dispute")
+  .description("Run the creator+executor+AI-arbiter dispute-path demo on local Anvil")
+  .action(async () => {
+    const runtime = new TrustCommitRuntime();
+    const result = await runtime.demoDisputeRun();
     console.log(
       JSON.stringify(
         {

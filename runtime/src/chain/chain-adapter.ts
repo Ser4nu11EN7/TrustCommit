@@ -6,10 +6,11 @@ import {
   decodeEventLog,
   http,
   keccak256,
+  stringToHex,
   toBytes
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import type { AccountConfig, RuntimeConfig, TaskRecord } from "../core/types.js";
+import type { AccountConfig, RuntimeConfig, SignatureRecord, TaskRecord } from "../core/types.js";
 import { loadContractArtifact } from "./artifacts.js";
 
 const COVENANT_ROLE = keccak256(toBytes("COVENANT_ROLE"));
@@ -287,6 +288,34 @@ export class ChainAdapter {
     const client = getClient(this.config);
     const block = await client.getBlock();
     return Number(block.timestamp);
+  }
+
+  public async signRolePayload(
+    role: "deployer" | "creator" | "executor" | "arbiter",
+    purpose: string,
+    payloadHash: `0x${string}`
+  ): Promise<SignatureRecord | null> {
+    const accounts = ensureAccounts(this.config);
+    const account = accounts[role];
+    try {
+      const walletClient = getWalletClient(this.config, account);
+      const statement = `TrustCommit:${purpose}:${payloadHash}`;
+      const signature = (await (walletClient as any).signMessage({
+        account: account.privateKey ? privateKeyToAccount(account.privateKey) : account.address,
+        message: { raw: stringToHex(statement) }
+      })) as `0x${string}`;
+      return {
+        signer: account.address,
+        signedAt: Date.now(),
+        scheme: "eip191",
+        purpose,
+        statement,
+        payloadHash,
+        signature
+      };
+    } catch (_error) {
+      return null;
+    }
   }
 
   private requireAddresses(): AddressConfig {

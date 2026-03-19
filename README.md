@@ -8,8 +8,8 @@ Autonomous agents can already act, but they are still difficult to trust with re
 
 - agents register into a trust layer and post stake
 - creators open covenant-backed tasks
-- executors produce evidence-grounded artifacts and proof hashes
-- every run exports `agent.json`, `artifact.json`, and `agent_log.json`
+- executors produce evidence-grounded artifacts and full proof-bundle hashes
+- every run exports `agent.json`, `artifact.json`, `agent_log.json`, and `proof_bundle.json`
 - disputes can be resolved against a persistent receipt trail
 
 Core narrative:
@@ -20,10 +20,10 @@ Core narrative:
 
 ### Core Components
 
-**Agent Identity (ERC-721)**
-- Each agent is represented as an NFT
-- Separates ownership from execution wallet
-- Enables agent transfer and marketplace potential
+**Agent Identity**
+- Agents register into `TrustRegistry` and operate with stake-backed execution rights
+- Ownership is separated from the execution wallet
+- The runtime exports manifests that keep the identity layer interoperable with ERC-8004-style receipts
 
 **Staking System**
 - Self-staking model (agent stakes for itself)
@@ -43,13 +43,17 @@ Core narrative:
 **Execution Receipts**
 - Runtime exports structured manifests and logs
 - Executor records inspected files, content hashes, plan, verification, and retry state
-- Proof hashes anchor the execution record onchain
+- Proof hashes anchor the full execution bundle onchain, not just the artifact payload
 
 **Receipt Chain**
 - Identity, commitment, execution artifacts, and onchain settlement are treated as one linked receipt chain
 - `agent.json` describes the operator and runtime capabilities
-- `agent_log.json` records budget policy, guardrails, verification, and receipt-chain fields
-- `artifact.json` and covenant tx hashes make each task outcome inspectable end-to-end
+- `agent_log.json` records budget policy, guardrails, verification, and the immutable pre-submit execution record
+- `proof_bundle.json` commits the artifact, evidence root, plan, verification, validator profiles, and execution trace into one bundle hash
+- `proof_bundle.json` is signed by the executor as an operator attestation
+- `receipt_record.json` is a hash-chained receipt index backed by append-only signed receipt event files
+- `dispute_evidence.json` and covenant tx hashes make each task outcome inspectable end-to-end
+- `dispute_evidence.json` now exports typed evidence packs (`identity`, `commitment`, `execution`, `verification`, `receipts`, `dispute`) so arbitration can review fixed evidence strata instead of a loose blob
 
 ## Quick Start
 
@@ -58,6 +62,7 @@ Core narrative:
 ```bash
 anvil
 npm run runtime -- demo:run
+npm run runtime -- demo:dispute
 ```
 
 ### Public Deployment
@@ -157,10 +162,11 @@ The repo now includes a CLI-first agent runtime under [runtime/src/cli.ts](/C:/U
 
 - `creator agent`: normalizes a structured task spec into covenant-ready data
 - `executor agent`: inspects the workspace, generates a structured artifact, hashes it, and submits completion onchain
-- `manual arbiter`: reserved as a CLI-compatible interface so the MVP can upgrade cleanly to an AI arbiter later
+- `AI arbiter`: reviews structured dispute evidence, receipt snapshots, and execution verification before resolving onchain
+- `manual arbiter`: remains available as a strict fallback path
 
 The runtime persists task state in SQLite under `.trustcommit/runtime.db` and stores full artifacts in `.trustcommit/artifacts/`.
-It also exports a repo-level `agent.json` manifest at `.trustcommit/agent.json` and a per-task `agent_log.json` beside each `artifact.json`.
+It also exports a repo-level `agent.json` manifest at `.trustcommit/agent.json` and per-task artifacts such as `artifact.json`, `agent_log.json`, `proof_bundle.json`, `receipt_record.json`, `dispute_evidence.json`, and `arbiter_log.json`.
 
 Run the local demo on Anvil:
 ```bash
@@ -172,11 +178,13 @@ Useful commands:
 ```bash
 npm run runtime -- runtime:init
 npm run runtime -- demo:bootstrap
+npm run runtime -- demo:dispute
 npm run runtime -- providers:health
 npm run runtime -- agent:manifest
 npm run runtime -- task:list
 npm run runtime -- task:create --title "Summarize repo" --instructions "Inspect the workspace and return JSON"
 npm run runtime -- task:details --id <task-id>
+npm run runtime -- task:verify --id <task-id>
 npm run runtime -- task:run --id <task-id>
 npm run runtime -- task:finalize --id <task-id>
 npm run runtime -- server:start --port 3000
@@ -212,11 +220,18 @@ The executor now records a grounded execution evidence chain before submitting o
 - real file inspections with content hashes and excerpts
 - a structured execution plan with explicit success criteria
 - a grounded execution loop: plan -> inspect -> generate -> verify -> optional retry
-- a truthful `agent_log.json` describing task ingest, workspace inspection, artifact generation, verification, and proof submission
+- a truthful `agent_log.json` describing task ingest, workspace inspection, artifact generation, verification, and the pre-submit proof record
+- a `proof_bundle.json` that commits artifact, evidence root, plan, verification, budget, and validator hashes into one onchain proof
+- a signed `proof_bundle.json` attestation so the operator cannot deny the committed bundle locally
 - run metadata in SQLite that links each task execution to its exported log path
 - explicit compute-budget fields such as attempts used, model calls, and evidence files considered
 - explicit guardrails covering pre-execution checks, execution constraints, and pre-commit safety checks
-- a receipt-chain section linking identity context, covenant commitment, execution artifacts, and onchain receipt hashes
+- a hard verification gate: failed artifacts do not get submitted onchain
+- validator profiles (`baseline`, `structured_commitment`, `procurement_commitment`) so deterministic checks stay attached to the covenant type instead of only schema hygiene
+- composable validator profiles (`selection_commitment`, `budget_commitment`, `compliance_commitment`) so covenant rules can generalize beyond the procurement demo
+- a hash-chained `receipt_record.json` index plus append-only signed `receipt_events/*.json` files so onchain receipts do not require mutating `agent_log.json`
+- sidecar `dispute.json`, `dispute_evidence.json`, `resolution.json`, and `arbiter_log.json` artifacts for contested tasks
+- an independent `task:verify` command that recomputes the proof bundle hash, verifies receipt-chain signatures, and checks that the receipt head matches the append-only event log
 
 ### Deploy
 ```bash

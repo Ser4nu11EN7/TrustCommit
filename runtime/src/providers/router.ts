@@ -1,4 +1,5 @@
 import type {
+  ArbiterDecision,
   ExecutionPlan,
   ModelProvider,
   ProviderContext,
@@ -141,6 +142,19 @@ export class ProviderRouter {
 
   public async generateArtifact(task: TaskRecord, repoContext: Record<string, unknown>, context: ProviderContext) {
     return this.withFallback((provider) => provider.generateArtifact(task, repoContext, context));
+  }
+
+  public async generateArbiterDecision(task: TaskRecord, reviewContext: Record<string, unknown>, context: ProviderContext) {
+    return this.withFallback((provider) => {
+      if (!provider.generateArbiterDecision) {
+        throw new Error(`${provider.name} does not support arbiter decisions`);
+      }
+      return provider.generateArbiterDecision(task, reviewContext, context);
+    }) as Promise<{
+      provider: string;
+      model: string;
+      value: Omit<ArbiterDecision, "taskId" | "createdAt" | "reviewMode">;
+    }>;
   }
 
   public async getHealth(forceRefresh = false): Promise<Record<ProviderName, ProviderHealthStatus>> {

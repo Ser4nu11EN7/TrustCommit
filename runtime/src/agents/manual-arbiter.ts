@@ -7,7 +7,10 @@ export class ManualArbiter {
       taskId: task.id,
       winner,
       reason,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      confidence: "high",
+      rationale: ["Decision was explicitly provided by a human arbiter."],
+      reviewMode: "manual"
     };
     return {
       decision,

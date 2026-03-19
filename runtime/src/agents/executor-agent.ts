@@ -1,10 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { AgentLog, ArtifactEnvelope, ExecutionPlan, RunRecord, TaskRecord } from "../core/types.js";
+import type { AgentLog, ArtifactEnvelope, ExecutionPlan, ExecutionTraceEntry, ProofBundleRecord, RunRecord, TaskRecord } from "../core/types.js";
 import { ProviderRouter } from "../providers/router.js";
 import { buildWorkspaceEvidence } from "../tools/workspace-evidence.js";
 import { hashJson } from "../utils/hash.js";
 import { makeId } from "../utils/id.js";
+import { validateArtifact } from "../validators/profiles.js";
 
 export class ExecutorAgent {
   public constructor(
@@ -29,6 +30,7 @@ export class ExecutorAgent {
     artifact: ArtifactEnvelope;
     proofHash: `0x${string}`;
     artifactPath: string;
+    proofBundlePath: string;
     agentLog: AgentLog;
     logPath: string;
   }> {
@@ -90,7 +92,14 @@ export class ExecutorAgent {
         payload: attemptResult.value
       };
 
-      const candidateVerification = verifyArtifactPayload(candidateArtifact.payload, outputSchema, evidence.files.map((file) => file.path), plan);
+      const candidateVerification = verifyArtifactPayload(
+        task,
+        candidateArtifact.payload,
+        outputSchema,
+        evidence.files,
+        plan,
+        this.workspaceRoot
+      );
       attempts.push({
         attemptNumber: attemptIndex + 1,
         provider: attemptResult.provider,
@@ -109,13 +118,66 @@ export class ExecutorAgent {
     if (!artifact || !verification) {
       throw new Error("Executor failed to produce an artifact");
     }
+    if (!verification.schemaSatisfied || verification.notes.length > 0) {
+      const reasons = [
+        ...verification.missingFields.map((field) => `missing field: ${field}`),
+        ...verification.notes
+      ];
+      throw new Error(
+        `Executor verification gate blocked submission after ${attempts.length}/${plan.maxAttempts} attempts: ${reasons.join(
+          "; "
+        )}`
+      );
+    }
 
     const taskDir = path.join(this.artifactDir, task.id);
     fs.mkdirSync(taskDir, { recursive: true });
     artifactPath = path.join(taskDir, "artifact.json");
-    fs.writeFileSync(artifactPath, JSON.stringify(artifact, null, 2));
-    proofHash = hashJson(artifact);
     const logPath = path.join(taskDir, "agent_log.json");
+    const proofBundlePath = path.join(taskDir, "proof_bundle.json");
+    const artifactHash = hashJson(artifact);
+    const budget = {
+      policy: [
+        "Execution plans are capped to two artifact attempts.",
+        "Workspace evidence is fixed before model generation begins.",
+        "Only inspected files may appear in the final receipt trail."
+      ],
+      attemptsAllowed: plan.maxAttempts,
+      attemptsUsed: attempts.length,
+      modelCalls: 1 + attempts.length,
+      verificationPasses: attempts.length,
+      evidenceFilesConsidered: evidence.files.length
+    } satisfies AgentLog["budget"];
+    const guardrails = {
+      preExecution: [
+        "Reject empty task instructions.",
+        "Reject empty output schemas.",
+        "Abort if no workspace evidence can be inspected."
+      ],
+      duringExecution: [
+        "Restrict evidence references to inspected workspace files.",
+        "Retry only after verification feedback and never exceed the attempt cap.",
+        "Keep execution grounded in the precomputed evidence set."
+      ],
+      preCommit: [
+        "Require expected schema fields before a clean verification pass.",
+        "Hash the full proof bundle before onchain submission.",
+        "Persist artifact.json, agent_log.json, and proof_bundle.json before returning a proof hash."
+      ]
+    } satisfies AgentLog["guardrails"];
+    const proofBundle = buildProofBundleRecord({
+      task,
+      artifact,
+      artifactPath,
+      logPath,
+      evidence,
+      plan,
+      verification,
+      attempts,
+      budget,
+      guardrails
+    });
+    proofHash = proofBundle.proofHash;
     const agentLog: AgentLog = {
       schemaVersion: "v1",
       taskId: task.id,
@@ -134,35 +196,8 @@ export class ExecutorAgent {
       evidence,
       plan,
       verification,
-      budget: {
-        policy: [
-          "Execution plans are capped to two artifact attempts.",
-          "Workspace evidence is fixed before model generation begins.",
-          "Only inspected files may appear in the final receipt trail."
-        ],
-        attemptsAllowed: plan.maxAttempts,
-        attemptsUsed: attempts.length,
-        modelCalls: 1 + attempts.length,
-        verificationPasses: attempts.length,
-        evidenceFilesConsidered: evidence.files.length
-      },
-      guardrails: {
-        preExecution: [
-          "Reject empty task instructions.",
-          "Reject empty output schemas.",
-          "Abort if no workspace evidence can be inspected."
-        ],
-        duringExecution: [
-          "Restrict evidence references to inspected workspace files.",
-          "Retry only after verification feedback and never exceed the attempt cap.",
-          "Keep execution grounded in the precomputed evidence set."
-        ],
-        preCommit: [
-          "Require expected schema fields before a clean verification pass.",
-          "Hash the canonical artifact JSON before onchain submission.",
-          "Persist artifact.json and agent_log.json before returning a proof hash."
-        ]
-      },
+      budget,
+      guardrails,
       receiptChain: {
         identityLayer: {
           trustRegistry: this.receiptContext.trustRegistry,
@@ -174,10 +209,12 @@ export class ExecutorAgent {
         },
         executionArtifacts: {
           artifactPath,
-          logPath
+          logPath,
+          proofBundlePath
         },
         onchain: {
           proofHash,
+          artifactHash,
           submitTxHash: null,
           finalizeTxHash: null,
           disputeTxHash: null,
@@ -280,14 +317,16 @@ export class ExecutorAgent {
           type: "proof_submission",
           status: "completed",
           observedAt: evidence.observedAt + 10,
-          summary: "Prepared the canonical artifact hash for onchain submission.",
+          summary: "Prepared the full proof bundle hash for onchain submission.",
           outputs: {
             proofHash
           }
         }
       ]
     };
+    fs.writeFileSync(artifactPath, JSON.stringify(artifact, null, 2));
     fs.writeFileSync(logPath, JSON.stringify(agentLog, null, 2));
+    fs.writeFileSync(proofBundlePath, JSON.stringify(proofBundle, null, 2));
 
     const now = Date.now();
     const run: RunRecord = {
@@ -312,7 +351,7 @@ export class ExecutorAgent {
       updatedAt: now
     };
 
-    return { run, artifact, proofHash, artifactPath, agentLog, logPath };
+    return { run, artifact, proofHash, artifactPath, proofBundlePath, agentLog, logPath };
   }
 }
 
@@ -363,59 +402,70 @@ function inspectPreconditions(task: TaskRecord, outputSchema: Record<string, str
 }
 
 function verifyArtifactPayload(
+  task: TaskRecord,
   payload: Record<string, unknown>,
   outputSchema: Record<string, string>,
-  inspectedPaths: string[],
-  plan: ExecutionPlan
+  evidenceFiles: AgentLog["evidence"]["files"],
+  plan: ExecutionPlan,
+  workspaceRoot: string
 ): AgentLog["verification"] {
-  const missingFields = Object.keys(outputSchema).filter((key) => !(key in payload));
-  const notes: string[] = [];
-  if (typeof payload.summary !== "string" || payload.summary.trim().length < 20) {
-    notes.push("Artifact summary was too short to be credible.");
-  }
-  if (!Array.isArray(payload.notes) || payload.notes.length === 0) {
-    notes.push("Artifact notes were missing.");
-  }
-  if ("inspectedFiles" in payload && Array.isArray(payload.inspectedFiles)) {
-    const inspectedFiles = payload.inspectedFiles
-      .map((value) => {
-        if (typeof value === "string") {
-          return value;
-        }
-        if (typeof value === "object" && value && "path" in value && typeof value.path === "string") {
-          return value.path;
-        }
-        return null;
-      })
-      .filter((value): value is string => value !== null);
-    const unknownPaths = inspectedFiles.filter((value) => !inspectedPaths.includes(value));
-    if (unknownPaths.length > 0) {
-      notes.push(`Artifact referenced files outside the inspected evidence set: ${unknownPaths.join(", ")}`);
-    }
-  } else {
-    notes.push("Artifact did not include an inspectedFiles field.");
-  }
-  if (plan.evidenceFocus.length > 0 && Array.isArray(payload.inspectedFiles)) {
-    const inspectedFiles = payload.inspectedFiles
-      .map((value) => {
-        if (typeof value === "string") {
-          return value;
-        }
-        if (typeof value === "object" && value && "path" in value && typeof value.path === "string") {
-          return value.path;
-        }
-        return null;
-      })
-      .filter((value): value is string => value !== null);
-    const focusedMatches = plan.evidenceFocus.filter((path) => inspectedFiles.includes(path));
-    if (focusedMatches.length === 0) {
-      notes.push("Artifact did not incorporate any of the plan's evidence focus files.");
-    }
-  }
+  return validateArtifact({
+    task,
+    payload,
+    outputSchema,
+    evidenceFiles,
+    plan,
+    workspaceRoot
+  });
+}
 
+function buildProofBundleRecord(input: {
+  task: TaskRecord;
+  artifact: ArtifactEnvelope;
+  artifactPath: string;
+  logPath: string;
+  evidence: AgentLog["evidence"];
+  plan: ExecutionPlan;
+  verification: AgentLog["verification"];
+  attempts: AttemptRecord[];
+  budget: AgentLog["budget"];
+  guardrails: AgentLog["guardrails"];
+}): ProofBundleRecord {
+  const createdAt = Date.now();
+  const executionTrace: ExecutionTraceEntry[] = input.attempts.map((attempt) => ({
+    attemptNumber: attempt.attemptNumber,
+    provider: attempt.provider,
+    model: attempt.model,
+    artifactHash: hashJson(attempt.artifact),
+    verificationHash: hashJson(attempt.verification)
+  }));
+  const bundleBase = {
+    schemaVersion: "v1" as const,
+    taskId: input.task.id,
+    taskHash: input.task.taskHash,
+    covenantId: input.task.covenantId,
+    artifactHash: hashJson(input.artifact),
+    verificationHash: hashJson(input.verification),
+    evidenceRoot: hashJson(
+      input.evidence.files.map((file) => ({
+        path: file.path,
+        contentHash: file.contentHash
+      }))
+    ),
+    planHash: hashJson(input.plan),
+    budgetHash: hashJson(input.budget),
+    guardrailsHash: hashJson(input.guardrails),
+    executionTrace,
+    executionTraceHash: hashJson(executionTrace),
+    validatorResultsHash: hashJson(input.verification.validatorResults),
+    artifactPath: input.artifactPath,
+    agentLogPath: input.logPath,
+    createdAt
+  };
+  const proofHash = hashJson(bundleBase);
   return {
-    schemaSatisfied: missingFields.length === 0 && notes.length === 0,
-    missingFields,
-    notes
+    ...bundleBase,
+    operatorAttestation: null,
+    proofHash
   };
 }

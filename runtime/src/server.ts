@@ -163,6 +163,11 @@ export async function startHttpServer(port = Number(process.env.PORT ?? 3000), h
       const arbiterTaskId = routeTaskAction(url.pathname, "arbiter");
       if (method === "POST" && arbiterTaskId) {
         const body = await readJsonBody(request);
+        if (body.mode === "auto") {
+          const task = await runtime.arbiterAutoReview(arbiterTaskId);
+          jsonResponse(response, 200, { ok: true, task });
+          return;
+        }
         const winner = body.winner === "creator" ? "creator" : body.winner === "executor" ? "executor" : null;
         const reason = typeof body.reason === "string" ? body.reason : "";
         if (!winner || !reason) {

@@ -1,0 +1,12 @@
+{
+  "vendor": "Vendor A",
+  "monthlyCostUsdc": 980,
+  "uptimeSla": "99.95%",
+  "auditLogExport": true,
+  "retentionDays": 14,
+  "webhookReceipts": true,
+  "notes": [
+    "Includes exportable activity logs",
+    "Supports short retention windows"
+  ]
+}

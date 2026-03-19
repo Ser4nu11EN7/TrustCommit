@@ -1,0 +1,12 @@
+{
+  "vendor": "Vendor B",
+  "monthlyCostUsdc": 1350,
+  "uptimeSla": "99.9%",
+  "auditLogExport": true,
+  "retentionDays": 90,
+  "webhookReceipts": false,
+  "notes": [
+    "Exceeds the stated monthly budget ceiling",
+    "Retention controls are weaker than the brief requires"
+  ]
+}

@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type {
+  ArbiterDecision,
   ExecutionPlan,
   GeneratedTaskPlan,
   ModelProvider,
@@ -91,6 +92,32 @@ export class OpenAiProvider implements ModelProvider {
       provider: this.name,
       model: this.model,
       value: extractJsonObject(completion.choices[0]?.message?.content ?? "")
+    };
+  }
+
+  public async generateArbiterDecision(
+    task: TaskRecord,
+    reviewContext: Record<string, unknown>,
+    context: ProviderContext
+  ): Promise<ModelResult<Omit<ArbiterDecision, "taskId" | "createdAt" | "reviewMode">>> {
+    const completion = await this.client.chat.completions.create({
+      model: this.model,
+      temperature: 0.1,
+      messages: [
+        { role: "system", content: context.systemPrompt },
+        {
+          role: "user",
+          content: `${context.userPrompt}\n\nReturn JSON only.\n\nTask:\n${JSON.stringify(task, null, 2)}\n\nReview context:\n${JSON.stringify(reviewContext, null, 2)}`
+        }
+      ]
+    });
+    return {
+      provider: this.name,
+      model: this.model,
+      value: extractJsonObject(completion.choices[0]?.message?.content ?? "") as unknown as Omit<
+        ArbiterDecision,
+        "taskId" | "createdAt" | "reviewMode"
+      >
     };
   }
 }

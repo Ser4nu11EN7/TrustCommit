@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type {
+  ArbiterDecision,
   ExecutionPlan,
   GeneratedTaskPlan,
   ModelProvider,
@@ -93,6 +94,30 @@ export class ClaudeProvider implements ModelProvider {
       provider: this.name,
       model: this.model,
       value: extractJsonObject(text)
+    };
+  }
+
+  public async generateArbiterDecision(
+    task: TaskRecord,
+    reviewContext: Record<string, unknown>,
+    context: ProviderContext
+  ): Promise<ModelResult<Omit<ArbiterDecision, "taskId" | "createdAt" | "reviewMode">>> {
+    const response = await this.client.messages.create({
+      model: this.model,
+      max_tokens: 1536,
+      system: context.systemPrompt,
+      messages: [
+        {
+          role: "user",
+          content: `${context.userPrompt}\n\nReturn JSON only.\n\nTask:\n${JSON.stringify(task, null, 2)}\n\nReview context:\n${JSON.stringify(reviewContext, null, 2)}`
+        }
+      ]
+    });
+    const text = response.content.map((entry) => ("text" in entry ? entry.text : "")).join("\n");
+    return {
+      provider: this.name,
+      model: this.model,
+      value: extractJsonObject(text) as unknown as Omit<ArbiterDecision, "taskId" | "createdAt" | "reviewMode">
     };
   }
 }

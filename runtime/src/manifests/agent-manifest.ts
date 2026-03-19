@@ -24,17 +24,36 @@ export function buildAgentManifest(config: RuntimeConfig): AgentManifest {
     capabilities: [
       "create structured execution artifacts",
       "record workspace evidence hashes",
+      "commit full proof bundles onchain",
+      "sign proof bundles and receipt events",
+      "export independently verifiable receipt trails",
       "submit covenant completion proofs",
       "support dispute review with inspectable logs"
     ],
     accountability: {
       taskCommitment: "covenant",
       identityStandard: "ERC-8004-compatible",
-      proofFormat: "keccak256(canonical-json)",
+      proofFormat: "keccak256(canonical-proof-bundle)",
       disputeResolution: true,
       stakeBacked: true,
-      receiptChain: ["agent identity", "covenant commitment", "artifact.json", "agent_log.json", "onchain proof"],
-      exportedArtifacts: ["artifact.json", "agent_log.json"]
+      receiptChain: [
+        "agent identity",
+        "covenant commitment",
+        "artifact.json",
+        "agent_log.json",
+        "proof_bundle.json",
+        "signed hash-chained receipt events",
+        "onchain proof"
+      ],
+      exportedArtifacts: [
+        "artifact.json",
+        "agent_log.json",
+        "proof_bundle.json",
+        "receipt_record.json",
+        "receipt_events/*.json",
+        "dispute_evidence.json",
+        "arbiter_log.json"
+      ]
     }
   };
 }

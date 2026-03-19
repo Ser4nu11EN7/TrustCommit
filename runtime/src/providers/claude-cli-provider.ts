@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import type {
+  ArbiterDecision,
   ExecutionPlan,
   GeneratedTaskPlan,
   ModelProvider,
@@ -113,6 +114,23 @@ export class ClaudeCliProvider implements ModelProvider {
       provider: this.name,
       model: `claude-cli:${this.model}`,
       value: extractJsonObject(text)
+    };
+  }
+
+  public async generateArbiterDecision(
+    task: TaskRecord,
+    reviewContext: Record<string, unknown>,
+    context: ProviderContext
+  ): Promise<ModelResult<Omit<ArbiterDecision, "taskId" | "createdAt" | "reviewMode">>> {
+    const text = await this.runPrompt(
+      context.systemPrompt,
+      `${context.userPrompt}\n\nReturn JSON only.\n\nTask:\n${JSON.stringify(task, null, 2)}\n\nReview context:\n${JSON.stringify(reviewContext, null, 2)}`
+    );
+
+    return {
+      provider: this.name,
+      model: `claude-cli:${this.model}`,
+      value: extractJsonObject(text) as unknown as Omit<ArbiterDecision, "taskId" | "createdAt" | "reviewMode">
     };
   }
 

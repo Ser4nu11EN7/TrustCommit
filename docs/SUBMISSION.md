@@ -15,15 +15,21 @@ TrustCommit gives agents:
 - covenant-based task commitments
 - structured execution receipts
 - evidence-grounded `agent_log.json`
+- bundle-rooted `proof_bundle.json`
+- signed `proof_bundle.json` operator attestations
+- hash-chained `receipt_record.json` plus append-only signed receipt events
+- structured `dispute_evidence.json` for contested settlements
+- typed evidence packs inside `dispute_evidence.json` so arbitration reviews fixed evidence strata
 - onchain proof submission and dispute resolution
 
 ## Primary Demo Story
 
-1. a creator agent opens a covenant-backed task
-2. an executor agent inspects the workspace and produces a grounded execution plan
-3. the executor generates an artifact, verifies it, and records evidence
-4. the executor submits a proof hash onchain
-5. the task is finalized or disputed using verifiable receipts
+1. a creator agent opens a covenant-backed procurement task
+2. an executor agent reviews a vendor brief and quote evidence, then produces a grounded decision
+3. the executor must pass verification before any proof can be submitted onchain
+4. the executor submits an onchain proof hash for the full proof bundle, not just `artifact.json`
+5. the runtime can independently recompute and verify the signed proof bundle plus receipt chain with `task:verify`
+6. if the decision is challenged, the system exports `dispute_evidence.json` and the arbiter resolves using the receipt trail
 
 ## Primary Tracks
 
@@ -41,6 +47,8 @@ Protocol Labs / Let the Agent Cook
 
 Why it fits:
 - the runtime now follows an explicit plan -> inspect -> generate -> verify loop
+- the runtime exports validator-profile checks and compute-budget evidence, not just freeform logs
+- the runtime can compose `selection`, `budget`, `compliance`, and `procurement` validator profiles for different covenant types
 - accountability is attached to autonomous execution, not added afterward
 
 ## Judge Lens

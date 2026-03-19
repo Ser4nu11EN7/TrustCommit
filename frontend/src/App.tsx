@@ -86,6 +86,11 @@ type AgentLog = {
     schemaSatisfied: boolean;
     missingFields: string[];
     notes: string[];
+    validatorResults?: Array<{
+      name: string;
+      passed: boolean;
+      details: string;
+    }>;
   };
   budget: {
     policy: string[];
@@ -112,9 +117,11 @@ type AgentLog = {
     executionArtifacts: {
       artifactPath: string;
       logPath: string;
+      proofBundlePath?: string;
     };
     onchain: {
       proofHash: string;
+      artifactHash?: string;
       submitTxHash: string | null;
       finalizeTxHash: string | null;
       disputeTxHash: string | null;
@@ -140,6 +147,51 @@ type ChainAction = {
   createdAt: number;
 };
 
+type DisputeRecord = {
+  reason: string;
+  evidenceHash: string;
+  createdAt: number;
+  txHash: string;
+};
+
+type ReceiptRecord = {
+  headHash?: string | null;
+  proofHash: string | null;
+  receipts: {
+    createTxHash?: string | null;
+    submitTxHash: string | null;
+    finalizeTxHash: string | null;
+    disputeTxHash: string | null;
+    resolveTxHash: string | null;
+  };
+};
+
+type ProofBundle = {
+  proofHash: string;
+  artifactPath: string;
+  agentLogPath: string;
+};
+
+type DisputeEvidence = {
+  reason: string;
+  artifactSnapshot: {
+    summary: string | null;
+  };
+  verificationSnapshot: {
+    schemaSatisfied: boolean;
+    notes: string[];
+  } | null;
+};
+
+type ResolutionRecord = {
+  winner: "creator" | "executor";
+  reason: string;
+  resolutionHash: string;
+  createdAt: number;
+  txHash: string;
+  outcome: "completed" | "slashed";
+};
+
 type TaskDetailsResponse = {
   ok: boolean;
   task: TaskRecord;
@@ -147,6 +199,11 @@ type TaskDetailsResponse = {
     payload: ArtifactPayload;
   } | null;
   agentLog: AgentLog | null;
+  proofBundle: ProofBundle | null;
+  receiptRecord: ReceiptRecord | null;
+  disputeRecord: DisputeRecord | null;
+  disputeEvidence: DisputeEvidence | null;
+  resolutionRecord: ResolutionRecord | null;
   runs: RunRecord[];
   chainActions: ChainAction[];
 };
@@ -377,6 +434,11 @@ export default function App() {
   const task = data.details?.task ?? null;
   const artifact = data.details?.artifact?.payload ?? null;
   const agentLog = data.details?.agentLog ?? null;
+  const receiptRecord = data.details?.receiptRecord ?? null;
+  const proofBundle = data.details?.proofBundle ?? null;
+  const disputeRecord = data.details?.disputeRecord ?? null;
+  const disputeEvidence = data.details?.disputeEvidence ?? null;
+  const resolutionRecord = data.details?.resolutionRecord ?? null;
   const latestRun = data.details?.runs.at(-1) ?? null;
   const latestAction = data.details?.chainActions.at(-1) ?? null;
   const timelineSteps = buildTimeline(task?.status);
@@ -387,7 +449,6 @@ export default function App() {
   const inspectedFiles = listInspectedFilePaths(artifact, agentLog);
   const notes = artifact?.notes ?? agentLog?.verification.notes ?? [];
   const verificationStatus = agentLog ? (agentLog.verification.schemaSatisfied ? "VERIFIED" : "FLAGGED") : error ? "DEGRADED" : "PENDING";
-  const arbiterStatus = task?.status === "disputed" ? "REVIEW" : "INACTIVE";
   const verificationNote = topVerificationNote(agentLog, notes);
   const guardrailCount = agentLog
     ? (agentLog.guardrails?.preExecution.length ?? 0) +
@@ -397,9 +458,24 @@ export default function App() {
   const disputeabilityNote =
     task?.status === "disputed"
       ? "Arbiter lane active with reviewable receipt trail."
+      : task?.status === "slashed"
+        ? "The dispute concluded on-chain and the executor was slashed."
       : task?.status === "completed"
         ? "Dispute window settled on-chain with final receipts."
         : "Dispute lane remains available if verification fails.";
+  const arbiterHeadline =
+    task?.status === "disputed"
+      ? "REVIEW"
+      : resolutionRecord?.outcome === "slashed"
+        ? "SLASHED"
+        : resolutionRecord?.outcome === "completed"
+          ? "RESOLVED"
+          : "INACTIVE";
+  const arbiterNote = resolutionRecord
+    ? resolutionRecord.reason
+    : disputeRecord
+      ? disputeRecord.reason
+      : "Dispute resolution handled on-chain";
 
   return (
     <div className="h-[100dvh] overflow-hidden bg-surface text-on-surface flex flex-col">
@@ -528,6 +604,12 @@ export default function App() {
                     {task ? `${task.id}/artifact.json` : ".trustcommit/artifacts/..."}
                   </div>
                 </div>
+                <div>
+                  <div className="text-[8px] uppercase font-black opacity-40 mb-1">Proof Bundle</div>
+                  <div className="mono text-[8px] break-all font-bold opacity-60">
+                    {proofBundle?.artifactPath ? `${task?.id}/proof_bundle.json` : ".trustcommit/artifacts/..."}
+                  </div>
+                </div>
               </div>
             </div>
             <div className="mt-4 flex items-center justify-end gap-2 text-primary font-black text-[10px] uppercase tracking-widest">
@@ -604,13 +686,19 @@ export default function App() {
               Covenant creation, proof submission, and settlement remain inspectable.
             </div>
           </div>
-          <div className="px-4 py-3">
-            <div className="text-[8px] font-black uppercase opacity-40 mb-1">Disputeability</div>
-            <div className="text-lg font-black uppercase tracking-tighter leading-none mb-1">
-              {task?.status === "disputed" ? "Review Open" : "Arbiter Ready"}
+            <div className="px-4 py-3">
+              <div className="text-[8px] font-black uppercase opacity-40 mb-1">Disputeability</div>
+              <div className="text-lg font-black uppercase tracking-tighter leading-none mb-1">
+                {task?.status === "disputed"
+                  ? "Review Open"
+                  : resolutionRecord?.outcome === "slashed"
+                    ? "Slash Recorded"
+                    : resolutionRecord?.outcome === "completed"
+                      ? "Resolved Onchain"
+                      : "Arbiter Ready"}
+              </div>
+              <div className="text-[10px] font-black italic leading-tight">{disputeabilityNote}</div>
             </div>
-            <div className="text-[10px] font-black italic leading-tight">{disputeabilityNote}</div>
-          </div>
         </section>
 
         <section className="grid grid-cols-2 flex-grow min-h-0 border-b-4 border-black">
@@ -666,25 +754,49 @@ export default function App() {
                 <span className="font-black">{agentLog?.budget?.attemptsUsed ?? 0}/{agentLog?.budget?.attemptsAllowed ?? 0} attempts</span>
               </div>
               <div className="flex justify-between border-b-2 border-black pb-1">
+                <span className="uppercase opacity-40 font-black text-[7px]">Receipt Head</span>
+                <span className="font-black">{shortHash(receiptRecord?.headHash ?? null)}</span>
+              </div>
+              <div className="flex justify-between border-b-2 border-black pb-1">
                 <span className="uppercase opacity-40 font-black text-[7px]">Submit Receipt</span>
-                <span className="font-black">{shortHash(agentLog?.receiptChain?.onchain.submitTxHash ?? latestAction?.txHash)}</span>
+                <span className="font-black">{shortHash(receiptRecord?.receipts.submitTxHash ?? latestAction?.txHash)}</span>
+              </div>
+              <div className="flex justify-between border-b-2 border-black pb-1">
+                <span className="uppercase opacity-40 font-black text-[7px]">Dispute Receipt</span>
+                <span className="font-black">{shortHash(disputeRecord?.txHash ?? receiptRecord?.receipts.disputeTxHash)}</span>
+              </div>
+              <div className="flex justify-between border-b-2 border-black pb-1">
+                <span className="uppercase opacity-40 font-black text-[7px]">Resolution Receipt</span>
+                <span className="font-black">{shortHash(resolutionRecord?.txHash ?? receiptRecord?.receipts.resolveTxHash)}</span>
               </div>
               <div className="flex justify-between items-center pt-2">
                 <span className="uppercase opacity-40 font-black text-[7px]">Validation</span>
                 <span className="font-black text-xs text-primary italic">
-                  {agentLog?.verification.schemaSatisfied ? "schema + evidence verified" : "receipt flagged for review"}
+                  {agentLog?.verification.schemaSatisfied ? "schema + validators verified" : "receipt flagged for review"}
                 </span>
+              </div>
+              <div className="flex justify-between border-b-2 border-black pb-1">
+                <span className="uppercase opacity-40 font-black text-[7px]">Validator Checks</span>
+                <span className="font-black">{agentLog?.verification.validatorResults?.length ?? 0}</span>
               </div>
               {notes.length > 0 ? (
                 <div className="border-t-2 border-black pt-2 text-[9px] leading-tight">
                   <span className="uppercase opacity-40 font-black text-[7px] block mb-1">Verifier Note</span>
-                  <span className="font-black italic text-primary">{notes[0]}</span>
+                  <span className="font-black italic text-primary">{disputeEvidence?.verificationSnapshot?.notes[0] ?? notes[0]}</span>
                 </div>
               ) : null}
               {agentLog?.guardrails?.preCommit.length ? (
                 <div className="border-t-2 border-black pt-2 text-[9px] leading-tight">
                   <span className="uppercase opacity-40 font-black text-[7px] block mb-1">Commit Guardrail</span>
                   <span className="font-black italic text-primary">{agentLog.guardrails.preCommit[0]}</span>
+                </div>
+              ) : null}
+              {resolutionRecord ? (
+                <div className="border-t-2 border-black pt-2 text-[9px] leading-tight">
+                  <span className="uppercase opacity-40 font-black text-[7px] block mb-1">Arbiter Outcome</span>
+                  <span className="font-black italic text-primary">
+                    {resolutionRecord.winner.toUpperCase()} // {resolutionRecord.outcome.toUpperCase()}
+                  </span>
                 </div>
               ) : null}
             </div>
@@ -700,10 +812,10 @@ export default function App() {
             </div>
             <div>
               <h4 className="font-black uppercase text-xl text-white tracking-tighter leading-none">
-                Arbiter: <span className="text-primary italic">{arbiterStatus}</span>
+                Arbiter: <span className="text-primary italic">{arbiterHeadline}</span>
               </h4>
               <p className="text-[7px] uppercase font-bold tracking-[0.1em] text-white opacity-40 mt-1">
-                {task?.status === "disputed" ? "Receipt trail ready for review" : "Dispute resolution handled on-chain"}
+                {arbiterNote}
               </p>
             </div>
           </div>
