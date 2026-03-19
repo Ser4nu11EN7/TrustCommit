@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TrustCommit | Agent Orchestration Console</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&amp;family=Space+Grotesk:wght@300;400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-tint": "#FF0000",
+              "error": "#FF0000",
+              "tertiary-container": "#747474",
+              "error-container": "#ffeaea",
+              "surface-dim": "#dadada",
+              "on-primary-container": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "surface": "#ffffff",
+              "on-primary": "#ffffff",
+              "on-error": "#ffffff",
+              "on-tertiary-fixed-variant": "#474747",
+              "surface-bright": "#ffffff",
+              "inverse-on-surface": "#ffffff",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-highest": "#e2e2e2",
+              "on-secondary": "#ffffff",
+              "on-tertiary-container": "#ffffff",
+              "secondary": "#000000",
+              "surface-container-high": "#e8e8e8",
+              "tertiary-fixed-dim": "#c6c6c6",
+              "on-error-container": "#FF0000",
+              "primary-fixed": "#ffdad4",
+              "surface-container": "#eeeeee",
+              "outline": "#000000",
+              "on-surface": "#000000",
+              "primary-fixed-dim": "#ffb4a8",
+              "on-secondary-fixed-variant": "#474747",
+              "tertiary-fixed": "#e2e2e2",
+              "outline-variant": "#000000",
+              "surface-container-low": "#f3f3f3",
+              "on-secondary-fixed": "#000000",
+              "on-secondary-container": "#000000",
+              "inverse-surface": "#000000",
+              "on-primary-fixed-variant": "#FF0000",
+              "on-primary-fixed": "#330000",
+              "background": "#ffffff",
+              "secondary-fixed-dim": "#c6c6c6",
+              "inverse-primary": "#ffb4a8",
+              "primary": "#FF0000",
+              "on-background": "#000000",
+              "surface-variant": "#e2e2e2",
+              "primary-container": "#FF0000",
+              "on-surface-variant": "#000000",
+              "secondary-container": "#e2e2e2",
+              "on-tertiary-fixed": "#000000",
+              "secondary-fixed": "#e2e2e2",
+              "tertiary": "#5c5c5c"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Space Grotesk"],
+              "label": ["Space Grotesk"]
+            },
+            borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'Space Grotesk', sans-serif; }
+        .brutalist-border { border: 8px solid #000000; }
+        .brutalist-border-md { border: 4px solid #000000; }
+        .brutalist-border-sm { border: 2px solid #000000; }
+        .step-block { width: 100%; height: 24px; background-color: #FF0000; }
+        .step-block-empty { width: 100%; height: 24px; background-color: #f3f3f3; }
+        .vertical-text { writing-mode: vertical-rl; transform: rotate(180deg); }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- TopNavBar -->
+<header class="bg-white border-b-8 border-black flex justify-between items-center w-full px-6 h-20 max-w-full sticky top-0 z-50">
+<div class="flex items-center h-full">
+<div class="text-3xl font-black text-black border-r-8 border-black h-full flex items-center pr-6 mr-6 italic uppercase tracking-tighter">
+            TRUSTCOMMIT
+        </div>
+<div class="hidden lg:block font-black uppercase tracking-widest text-[10px] opacity-40 leading-none">
+            Trust layer for agent collaboration<br/>Protocol version 1.0.4
+        </div>
+</div>
+<div class="hidden md:flex items-center gap-6">
+<div class="bg-primary text-white font-black uppercase text-[10px] px-2 py-1 tracking-widest">Network: Anvil 31337</div>
+<div class="font-black uppercase text-[10px] tracking-widest">Provider Route: OpenAI / Claude CLI / Mock</div>
+<div class="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest">
+<span class="w-3 h-3 bg-primary"></span> System: Healthy
+        </div>
+<button class="bg-black text-white brutalist-border-sm px-6 py-2 font-black uppercase text-sm tracking-tighter hover:bg-primary transition-colors">
+            RUN DEMO
+        </button>
+</div>
+</header>
+<main class="max-w-full mx-auto p-0 space-y-0">
+<!-- Hero Stage: Heavy Constructivist Grid -->
+<section class="grid grid-cols-1 lg:grid-cols-12 border-b-8 border-black min-h-[600px]">
+<!-- Left Panel: Creator Agent (Task Layer) -->
+<div class="lg:col-span-3 p-8 border-b-8 lg:border-b-0 lg:border-r-8 border-black bg-white flex flex-col justify-between">
+<div>
+<div class="bg-black text-white inline-block px-3 py-1 font-black uppercase text-[10px] tracking-widest mb-8">CREATOR.AGENT</div>
+<h3 class="font-black text-5xl uppercase tracking-tighter mb-2 leading-none">Planner_Node</h3>
+<div class="mono text-xs font-bold opacity-40 mb-12 uppercase tracking-widest">ROLE: TASK_NORMALIZER // AGENT_01</div>
+<div class="space-y-8">
+<div class="border-l-8 border-black pl-4">
+<div class="text-[10px] uppercase font-black opacity-40 mb-2">TASK_PLAN</div>
+<div class="text-xl font-black leading-tight">Inspect the TrustCommit workspace and produce a structured JSON artifact for operators.</div>
+</div>
+<div>
+<div class="text-[10px] uppercase font-black opacity-40 mb-2">TASK_HASH</div>
+<div class="mono text-[10px] break-all font-bold opacity-60">0xbdbdd3991a3e2a6614f9f04ad32e88f2dcb062f19290bcbc1142adbc482cd940</div>
+</div>
+</div>
+</div>
+<div class="mt-auto flex items-center gap-3 text-primary font-black text-xs uppercase tracking-widest pt-8">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                TASK HASHED // COVENANT CREATED
+            </div>
+</div>
+<!-- Center Stage: Current Covenant (Agent Layer) -->
+<div class="lg:col-span-6 p-12 flex flex-col justify-center relative bg-white overflow-hidden">
+<div class="absolute top-0 right-0 bg-primary text-white px-8 py-4 text-2xl font-black uppercase tracking-tighter italic">
+                FINALIZED
+            </div>
+<div class="mb-12">
+<div class="font-black uppercase text-[10px] tracking-[0.3em] opacity-30 mb-4">PROTOCOL_ACTIVE // COVENANT_V1</div>
+<h1 class="font-black text-6xl lg:text-8xl uppercase tracking-tighter leading-[0.85] mb-8">
+                    WORKSPACE<br/>SUMMARY<br/><span class="text-primary">#TC-01</span>
+</h1>
+</div>
+<div class="grid grid-cols-2 gap-0 border-8 border-black mb-12">
+<div class="p-6 border-r-8 border-black">
+<div class="text-[10px] uppercase font-black opacity-40 mb-2">REWARD_POOL</div>
+<div class="text-6xl font-black text-primary tracking-tighter leading-none">10</div>
+<div class="text-xl font-black uppercase">mUSDC</div>
+</div>
+<div class="p-6">
+<div class="text-[10px] uppercase font-black opacity-40 mb-2">LOCKED_STAKE</div>
+<div class="text-6xl font-black tracking-tighter leading-none">500</div>
+<div class="text-xl font-black uppercase">mUSDC</div>
+</div>
+</div>
+<div class="w-full">
+<div class="flex justify-between items-end mb-4">
+<span class="text-sm font-black uppercase tracking-widest">EXECUTION_INTEGRITY</span>
+<span class="text-sm font-black mono text-primary">PROOF COMMITTED</span>
+</div>
+<div class="flex gap-1 w-full bg-surface-container-high border-4 border-black p-1">
+<div class="step-block"></div><div class="step-block"></div><div class="step-block"></div><div class="step-block"></div>
+<div class="step-block"></div><div class="step-block"></div><div class="step-block"></div><div class="step-block"></div>
+<div class="step-block"></div><div class="step-block"></div><div class="step-block"></div><div class="step-block"></div>
+</div>
+</div>
+</div>
+<!-- Right Panel: Executor Agent (Agent Layer) -->
+<div class="lg:col-span-3 p-8 border-t-8 lg:border-t-0 lg:border-l-8 border-black bg-white flex flex-col justify-between">
+<div class="text-right">
+<div class="bg-primary text-white inline-block px-3 py-1 font-black uppercase text-[10px] tracking-widest mb-8">EXECUTOR.AGENT</div>
+<h3 class="font-black text-5xl uppercase tracking-tighter mb-2 leading-none text-right">Runtime_Node</h3>
+<div class="mono text-xs font-bold opacity-40 mb-12 uppercase tracking-widest text-right">MODEL: CLAUDE_CLI // EXECUTOR_01</div>
+<div class="space-y-8 text-right">
+<div class="border-r-8 border-black pr-4">
+<div class="text-[10px] uppercase font-black opacity-40 mb-2">SUMMARY</div>
+<div class="text-xl font-black leading-tight italic">Generated a structured workspace summary and submitted the artifact hash on-chain.</div>
+</div>
+<div>
+<div class="text-[10px] uppercase font-black opacity-40 mb-2">ARTIFACT</div>
+<div class="mono text-[10px] break-all font-bold opacity-60">.trustcommit/artifacts/task_8844.../artifact.json</div>
+</div>
+</div>
+</div>
+<div class="mt-auto flex items-center justify-end gap-3 text-primary font-black text-xs uppercase tracking-widest pt-8">
+                ARTIFACT HASHED // COMPLETION SUBMITTED
+                <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">cloud_done</span>
+</div>
+</div>
+</section>
+<!-- On-chain Proof Grid (On-chain Layer) -->
+<section class="grid grid-cols-2 md:grid-cols-6 border-b-8 border-black">
+<div class="p-8 border-r-8 border-black bg-white">
+<div class="text-[10px] font-black uppercase opacity-40 mb-4">COVENANT_ID</div>
+<div class="mono text-sm font-black break-all leading-tight">0x47c2...38ec</div>
+</div>
+<div class="p-8 border-r-8 border-black bg-white">
+<div class="text-[10px] font-black uppercase opacity-40 mb-4">TASK_HASH</div>
+<div class="mono text-lg font-black truncate">0xbdbd...d940</div>
+</div>
+<div class="p-8 border-r-8 border-black bg-white">
+<div class="text-[10px] font-black uppercase opacity-40 mb-4">PROOF_HASH</div>
+<div class="mono text-lg font-black truncate">0xd68b...fb28</div>
+</div>
+<div class="p-8 border-r-8 border-black bg-white">
+<div class="text-[10px] font-black uppercase opacity-40 mb-4">LATEST_TX</div>
+<div class="mono text-lg font-black truncate">0xe63a...cb59</div>
+</div>
+<div class="p-8 border-r-8 border-black bg-white col-span-1">
+<div class="text-[10px] font-black uppercase text-primary mb-4">DISPUTE_WINDOW</div>
+<div class="font-black text-3xl leading-none">7D<br/><span class="text-sm opacity-40">AUTO ADVANCED</span></div>
+</div>
+<div class="p-8 bg-black text-white flex flex-col justify-center items-center">
+<div class="text-[10px] font-black uppercase opacity-60 mb-2">STATUS</div>
+<div class="font-black text-3xl tracking-tighter text-primary italic">FINALIZED</div>
+</div>
+</section>
+<!-- Protocol Timeline -->
+<section class="border-b-8 border-black p-12 bg-white">
+<div class="flex items-center gap-4 mb-16">
+<div class="bg-black text-white p-2">
+<span class="material-symbols-outlined text-3xl">route</span>
+</div>
+<h2 class="font-black uppercase tracking-tighter text-4xl">PROTOCOL_TIMELINE</h2>
+</div>
+<div class="relative px-4">
+<div class="absolute top-1/2 left-0 w-full h-2 bg-black -translate-y-1/2 hidden md:block"></div>
+<div class="grid grid-cols-1 md:grid-cols-7 gap-0 relative z-10">
+<!-- Timeline items with high punch -->
+<div class="bg-white border-4 border-black p-4 flex flex-col items-center group hover:bg-black hover:text-white transition-all">
+<span class="material-symbols-outlined mb-2">edit</span>
+<div class="text-[10px] font-black uppercase text-center leading-tight">TASK_DRAFTED</div>
+<div class="mono text-[10px] font-bold opacity-40">CREATOR</div>
+</div>
+<div class="bg-white border-4 border-black p-4 flex flex-col items-center group hover:bg-black hover:text-white transition-all -ml-1">
+<span class="material-symbols-outlined mb-2">handshake</span>
+<div class="text-[10px] font-black uppercase text-center leading-tight">COVENANT_CREATED</div>
+<div class="mono text-[10px] font-bold opacity-40">ONCHAIN</div>
+</div>
+<div class="bg-white border-4 border-black p-4 flex flex-col items-center group hover:bg-black hover:text-white transition-all -ml-1">
+<span class="material-symbols-outlined mb-2">play_arrow</span>
+<div class="text-[10px] font-black uppercase text-center leading-tight">EXECUTION_STARTED</div>
+<div class="mono text-[10px] font-bold opacity-40">EXECUTOR</div>
+</div>
+<div class="bg-white border-4 border-black p-4 flex flex-col items-center group hover:bg-black hover:text-white transition-all -ml-1">
+<span class="material-symbols-outlined mb-2">description</span>
+<div class="text-[10px] font-black uppercase text-center leading-tight">ARTIFACT_GENERATED</div>
+<div class="mono text-[10px] font-bold opacity-40">JSON</div>
+</div>
+<div class="bg-white border-4 border-black p-4 flex flex-col items-center group hover:bg-black hover:text-white transition-all -ml-1">
+<span class="material-symbols-outlined mb-2">publish</span>
+<div class="text-[10px] font-black uppercase text-center leading-tight">SUBMITTED</div>
+<div class="mono text-[10px] font-bold opacity-40">PROOF_HASH</div>
+</div>
+<div class="bg-white border-4 border-black p-4 flex flex-col items-center group hover:bg-black hover:text-white transition-all -ml-1">
+<span class="material-symbols-outlined mb-2">schedule</span>
+<div class="text-[10px] font-black uppercase text-center leading-tight">DISPUTE_WINDOW</div>
+<div class="mono text-[10px] font-bold opacity-40">ADVANCED</div>
+</div>
+<div class="bg-primary text-white border-4 border-black p-4 flex flex-col items-center group -ml-1">
+<span class="material-symbols-outlined mb-2">lock</span>
+<div class="text-[10px] font-black uppercase text-center leading-tight">FINALIZED</div>
+<div class="mono text-[10px] font-bold opacity-60">COMPLETE</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Artifact Results: Split View -->
+<section class="grid grid-cols-1 lg:grid-cols-2 border-b-8 border-black">
+<div class="border-b-8 lg:border-b-0 lg:border-r-8 border-black bg-white">
+<div class="bg-black text-white p-4 font-black uppercase tracking-widest text-xs flex justify-between items-center">
+<span>AUDIT_SUMMARY</span>
+<span class="material-symbols-outlined text-sm text-primary">terminal</span>
+</div>
+<div class="p-12">
+<div class="grid grid-cols-3 gap-8 mb-16 text-center">
+<div class="border-l-4 border-black p-2">
+<div class="text-7xl font-black leading-none">8</div>
+<div class="text-[10px] uppercase font-black opacity-40 mt-2">FILES_INDEXED</div>
+</div>
+<div class="border-l-4 border-primary p-2">
+<div class="text-7xl font-black text-primary leading-none">4</div>
+<div class="text-[10px] uppercase font-black opacity-40 mt-2">OUTPUT_FIELDS</div>
+</div>
+<div class="border-l-4 border-black p-2">
+<div class="text-7xl font-black leading-none">0</div>
+<div class="text-[10px] uppercase font-black opacity-40 mt-2">DISPUTES</div>
+</div>
+</div>
+<div class="p-8 border-8 border-black bg-surface-container-low italic text-2xl font-black leading-tight relative">
+<div class="absolute -top-4 -left-4 bg-primary text-white px-2 py-1 text-[10px] font-black not-italic">REPORT.01</div>
+                    "TrustCommit is an agent trust infrastructure with Solidity contracts, a local runtime, and a proof-linked artifact pipeline that binds agent output to on-chain covenant state."
+                </div>
+</div>
+</div>
+<div class="bg-white">
+<div class="bg-black text-white p-4 font-black uppercase tracking-widest text-xs flex justify-between items-center">
+<span>TECHNICAL_INFO</span>
+<span class="material-symbols-outlined text-sm text-primary">data_object</span>
+</div>
+<div class="p-12 space-y-6 mono text-sm">
+<div class="flex flex-col border-b-4 border-black pb-4">
+<span class="uppercase opacity-40 font-black text-[10px] mb-1">PATH_LOCATOR</span>
+<span class="font-black text-xl">.trustcommit/artifacts/task_8844.../artifact.json</span>
+</div>
+<div class="flex flex-col border-b-4 border-black pb-4">
+<span class="uppercase opacity-40 font-black text-[10px] mb-1">TIMESTAMP_UTC</span>
+<span class="font-black text-xl">2026-03-19 07:20:30</span>
+</div>
+<div class="flex flex-col border-b-4 border-black pb-4">
+<span class="uppercase opacity-40 font-black text-[10px] mb-1">PROOF_HASH_ROOT</span>
+<span class="font-black text-xl truncate">0xd68b59ce4d376081a439bde7d107024145c493d1d6a00937f455af0eb314fb28</span>
+</div>
+<div class="flex flex-col border-b-4 border-black pb-4">
+<span class="uppercase opacity-40 font-black text-[10px] mb-1">EXECUTION_ENGINE</span>
+<span class="font-black text-xl">CLAUDE_CLI + ANVIL + LOCAL_HTTP</span>
+</div>
+<div class="flex justify-between items-center pt-4">
+<span class="uppercase opacity-40 font-black text-[10px]">VALIDATOR_SIG</span>
+<span class="font-black text-2xl text-primary italic">HASH_COMMITTED_ONCHAIN</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Arbiter Lane -->
+<section class="bg-black p-12 flex flex-col md:flex-row justify-between items-center gap-12">
+<div class="flex items-center gap-8">
+<div class="w-24 h-24 bg-primary flex items-center justify-center border-8 border-white">
+<span class="material-symbols-outlined text-white text-6xl">policy</span>
+</div>
+<div>
+<h4 class="font-black uppercase text-4xl text-white tracking-tighter">ARBITER_STATUS: <span class="text-primary italic">NO_ACTIVE_DISPUTE</span></h4>
+<p class="text-xs uppercase font-bold tracking-[0.2em] text-white opacity-40 mt-2">Manual arbiter lane reserved in MVP // AI resolution can replace this interface later</p>
+</div>
+</div>
+<button class="border-8 border-white px-12 py-6 bg-white font-black uppercase text-xl hover:bg-primary hover:text-white transition-all transform active:scale-95 italic">
+            REVIEW DISPUTE PATH
+        </button>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-black border-t-8 border-primary flex flex-wrap justify-between items-center w-full px-8 py-8 min-h-[100px]">
+<div class="flex items-center gap-6">
+<div class="bg-primary text-white p-2 font-black text-xl italic uppercase">T/C</div>
+<div class="text-white font-black text-[10px] uppercase tracking-[0.4em] opacity-60">
+            TRUSTCOMMIT // SYSTEM_CORE // STATE_SYNCHRONIZED
+        </div>
+</div>
+<div class="flex gap-12">
+<div class="flex flex-col">
+<span class="text-primary font-black text-[8px] uppercase tracking-widest">HTTP</span>
+<span class="text-white font-black text-[10px] uppercase">LOCAL_API</span>
+</div>
+<div class="flex flex-col">
+<span class="text-primary font-black text-[8px] uppercase tracking-widest">DATABASE</span>
+<span class="text-white font-black text-[10px] uppercase">SQLITE_STATE</span>
+</div>
+<div class="flex flex-col">
+<span class="text-primary font-black text-[8px] uppercase tracking-widest">PROVIDER</span>
+<span class="text-white font-black text-[10px] uppercase">CLAUDE_CLI</span>
+</div>
+<div class="flex flex-col">
+<span class="text-primary font-black text-[8px] uppercase tracking-widest">ARTIFACTS</span>
+<span class="text-white font-black text-[10px] uppercase">LOCAL_STORE</span>
+</div>
+</div>
+<div class="font-black text-[10px] uppercase tracking-widest text-white opacity-20 border-l-2 border-white/20 pl-6 h-full py-2">
+        CONTRACTS: TOKEN 0X5FBD...0AA3 // REGISTRY 0XE7F1...0512 // COVENANT 0X9FE4...A6E0
+    </div>
+</footer>
+</body></html>

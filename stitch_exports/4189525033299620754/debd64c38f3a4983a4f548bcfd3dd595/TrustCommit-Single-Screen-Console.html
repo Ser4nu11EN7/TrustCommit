@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TrustCommit | Agent Orchestration Console</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&amp;family=Space+Grotesk:wght@300;400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-tint": "#FF0000",
+              "error": "#FF0000",
+              "tertiary-container": "#747474",
+              "error-container": "#ffeaea",
+              "surface-dim": "#dadada",
+              "on-primary-container": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "surface": "#ffffff",
+              "on-primary": "#ffffff",
+              "on-error": "#ffffff",
+              "on-tertiary-fixed-variant": "#474747",
+              "surface-bright": "#ffffff",
+              "inverse-on-surface": "#ffffff",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-highest": "#e2e2e2",
+              "on-secondary": "#ffffff",
+              "on-tertiary-container": "#ffffff",
+              "secondary": "#000000",
+              "surface-container-high": "#e8e8e8",
+              "tertiary-fixed-dim": "#c6c6c6",
+              "on-error-container": "#FF0000",
+              "primary-fixed": "#ffdad4",
+              "surface-container": "#eeeeee",
+              "outline": "#000000",
+              "on-surface": "#000000",
+              "primary-fixed-dim": "#ffb4a8",
+              "on-secondary-fixed-variant": "#474747",
+              "tertiary-fixed": "#e2e2e2",
+              "outline-variant": "#000000",
+              "surface-container-low": "#f3f3f3",
+              "on-secondary-fixed": "#000000",
+              "on-secondary-container": "#000000",
+              "inverse-surface": "#000000",
+              "on-primary-fixed-variant": "#FF0000",
+              "on-primary-fixed": "#330000",
+              "background": "#ffffff",
+              "secondary-fixed-dim": "#c6c6c6",
+              "inverse-primary": "#ffb4a8",
+              "primary": "#FF0000",
+              "on-background": "#000000",
+              "surface-variant": "#e2e2e2",
+              "primary-container": "#FF0000",
+              "on-surface-variant": "#000000",
+              "secondary-container": "#e2e2e2",
+              "on-tertiary-fixed": "#000000",
+              "secondary-fixed": "#e2e2e2",
+              "tertiary": "#5c5c5c"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Space Grotesk"],
+              "label": ["Space Grotesk"]
+            },
+            borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; }
+        .mono { font-family: 'Space Grotesk', sans-serif; }
+        .brutalist-border { border: 6px solid #000000; }
+        .brutalist-border-md { border: 4px solid #000000; }
+        .brutalist-border-sm { border: 2px solid #000000; }
+        .step-block { width: 100%; height: 16px; background-color: #FF0000; }
+        .step-block-empty { width: 100%; height: 16px; background-color: #f3f3f3; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex flex-col">
+<!-- Compact Header -->
+<header class="bg-white border-b-4 border-black flex justify-between items-center w-full px-4 h-14 shrink-0 z-50">
+<div class="flex items-center h-full">
+<div class="text-2xl font-black text-black border-r-4 border-black h-full flex items-center pr-4 mr-4 italic uppercase tracking-tighter">
+            TRUSTCOMMIT
+        </div>
+<div class="hidden lg:block font-black uppercase tracking-widest text-[8px] opacity-40 leading-none">
+            Trust layer for agent collaboration<br/>Protocol version 1.0.4
+        </div>
+</div>
+<div class="flex items-center gap-4">
+<div class="bg-primary text-white font-black uppercase text-[8px] px-2 py-0.5 tracking-widest">Network: Base Sepolia</div>
+<div class="hidden sm:block font-black uppercase text-[8px] tracking-widest">Provider: Claude CLI</div>
+<div class="flex items-center gap-2 font-black uppercase text-[8px] tracking-widest">
+<span class="w-2 h-2 bg-primary"></span> System: Healthy
+        </div>
+<button class="bg-black text-white brutalist-border-sm px-4 py-1 font-black uppercase text-xs tracking-tighter hover:bg-primary transition-colors">
+            CREATE TASK
+        </button>
+</div>
+</header>
+<main class="flex-grow flex flex-col overflow-hidden">
+<!-- Hero Stage: Compact Constructivist Grid -->
+<section class="grid grid-cols-12 border-b-4 border-black flex-grow min-h-0">
+<!-- Left Panel: Creator -->
+<div class="col-span-3 p-4 border-r-4 border-black bg-white flex flex-col justify-between overflow-y-auto">
+<div>
+<div class="bg-black text-white inline-block px-2 py-0.5 font-black uppercase text-[8px] tracking-widest mb-4">CREATOR.AGENT</div>
+<h3 class="font-black text-3xl uppercase tracking-tighter leading-none mb-1">Audit_Bot</h3>
+<div class="mono text-[9px] font-bold opacity-40 mb-6 uppercase tracking-widest">ID: AG-992-TX</div>
+<div class="space-y-4">
+<div class="border-l-4 border-black pl-3">
+<div class="text-[8px] uppercase font-black opacity-40 mb-1">TASK_PLAN</div>
+<div class="text-sm font-black leading-tight">Scan /src for vulnerabilities and suggest patches.</div>
+</div>
+<div>
+<div class="text-[8px] uppercase font-black opacity-40 mb-1">TASK_HASH</div>
+<div class="mono text-[8px] break-all font-bold opacity-60">0xabc1234567890abcdef123...</div>
+</div>
+</div>
+</div>
+<div class="mt-4 flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                CREATED COVENANT
+            </div>
+</div>
+<!-- Center Stage: Main Covenant -->
+<div class="col-span-6 p-6 flex flex-col justify-center relative bg-white overflow-hidden border-r-4 border-black">
+<div class="absolute top-0 right-0 bg-primary text-white px-4 py-2 text-sm font-black uppercase tracking-tighter italic">
+                COMPLETED
+            </div>
+<div class="mb-6">
+<div class="font-black uppercase text-[8px] tracking-[0.3em] opacity-30 mb-2">PROTOCOL_ACTIVE // COVENANT_V1</div>
+<h1 class="font-black text-4xl lg:text-6xl uppercase tracking-tighter leading-[0.85] mb-4">
+                    AUTOMATED<br/>CODE AUDIT<br/><span class="text-primary">#8829</span>
+</h1>
+</div>
+<div class="grid grid-cols-2 gap-0 border-4 border-black mb-6">
+<div class="p-3 border-r-4 border-black">
+<div class="text-[8px] uppercase font-black opacity-40 mb-1">REWARD_POOL</div>
+<div class="text-4xl font-black text-primary tracking-tighter leading-none">150</div>
+<div class="text-sm font-black uppercase">USDC</div>
+</div>
+<div class="p-3">
+<div class="text-[8px] uppercase font-black opacity-40 mb-1">LOCKED_STAKE</div>
+<div class="text-4xl font-black tracking-tighter leading-none">25</div>
+<div class="text-sm font-black uppercase">USDC</div>
+</div>
+</div>
+<div class="w-full">
+<div class="flex justify-between items-end mb-2">
+<span class="text-[10px] font-black uppercase tracking-widest">EXECUTION_INTEGRITY</span>
+<span class="text-[10px] font-black mono text-primary">100% VERIFIED</span>
+</div>
+<div class="flex gap-0.5 w-full bg-surface-container-high border-2 border-black p-0.5">
+<div class="step-block"></div><div class="step-block"></div><div class="step-block"></div><div class="step-block"></div>
+<div class="step-block"></div><div class="step-block"></div><div class="step-block"></div><div class="step-block"></div>
+</div>
+</div>
+</div>
+<!-- Right Panel: Executor -->
+<div class="col-span-3 p-4 bg-white flex flex-col justify-between overflow-y-auto">
+<div class="text-right">
+<div class="bg-primary text-white inline-block px-2 py-0.5 font-black uppercase text-[8px] tracking-widest mb-4">EXECUTOR.AGENT</div>
+<h3 class="font-black text-3xl uppercase tracking-tighter leading-none mb-1">Sec_LLM</h3>
+<div class="mono text-[9px] font-bold opacity-40 mb-6 uppercase tracking-widest">MODEL: CLAUDE-3.5</div>
+<div class="space-y-4">
+<div class="border-r-4 border-black pr-3">
+<div class="text-[8px] uppercase font-black opacity-40 mb-1">SUMMARY</div>
+<div class="text-sm font-black leading-tight italic">Identified and fixed 3 critical XSS issues.</div>
+</div>
+<div>
+<div class="text-[8px] uppercase font-black opacity-40 mb-1">ARTIFACT</div>
+<div class="mono text-[8px] break-all font-bold opacity-60">audit_final_0x8829.json</div>
+</div>
+</div>
+</div>
+<div class="mt-4 flex items-center justify-end gap-2 text-primary font-black text-[10px] uppercase tracking-widest">
+                SUBMITTED COMPLETION
+                <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">cloud_done</span>
+</div>
+</div>
+</section>
+<!-- Compressed Proof & Timeline Combined Row -->
+<section class="grid grid-cols-12 border-b-4 border-black shrink-0">
+<!-- Proof Cards (Simplified) -->
+<div class="col-span-6 grid grid-cols-3 border-r-4 border-black h-16">
+<div class="px-3 py-2 border-r-2 border-black bg-white">
+<div class="text-[7px] font-black uppercase opacity-40">COVENANT</div>
+<div class="font-black text-lg">#10294</div>
+</div>
+<div class="px-3 py-2 border-r-2 border-black bg-white">
+<div class="text-[7px] font-black uppercase opacity-40">PROOF_ROOT</div>
+<div class="mono text-[10px] font-black truncate">0xproof_82a...</div>
+</div>
+<div class="px-3 py-2 bg-white">
+<div class="text-[7px] font-black uppercase text-primary">WINDOW</div>
+<div class="font-black text-lg leading-none">12h <span class="text-[8px] opacity-40 font-bold uppercase">left</span></div>
+</div>
+</div>
+<!-- Timeline Row (Linearized) -->
+<div class="col-span-6 flex items-center bg-white px-2 overflow-x-auto gap-1">
+<div class="text-[8px] font-black uppercase mr-2 shrink-0 flex items-center gap-1"><span class="material-symbols-outlined text-sm">route</span> TIMELINE:</div>
+<div class="flex items-center gap-0.5">
+<div class="border-2 border-black px-1.5 py-0.5 text-[8px] font-black bg-black text-white">DRAFT</div>
+<div class="w-2 h-0.5 bg-black"></div>
+<div class="border-2 border-black px-1.5 py-0.5 text-[8px] font-black">COVENANT</div>
+<div class="w-2 h-0.5 bg-black"></div>
+<div class="border-2 border-black px-1.5 py-0.5 text-[8px] font-black">EXEC</div>
+<div class="w-2 h-0.5 bg-black"></div>
+<div class="border-2 border-black px-1.5 py-0.5 text-[8px] font-black bg-primary text-white animate-pulse">DISPUTE</div>
+<div class="w-2 h-0.5 bg-black opacity-20"></div>
+<div class="border-2 border-black border-dashed px-1.5 py-0.5 text-[8px] font-black opacity-30">LOCK</div>
+</div>
+</div>
+</section>
+<!-- Split View: Results & Tech -->
+<section class="grid grid-cols-2 flex-grow min-h-0 border-b-4 border-black">
+<div class="border-r-4 border-black bg-white flex flex-col h-full">
+<div class="bg-black text-white px-3 py-1 font-black uppercase tracking-widest text-[8px] flex justify-between items-center shrink-0">
+<span>AUDIT_SUMMARY</span>
+<span class="material-symbols-outlined text-xs text-primary">terminal</span>
+</div>
+<div class="p-4 flex flex-col justify-center flex-grow overflow-y-auto">
+<div class="grid grid-cols-3 gap-2 mb-4 text-center">
+<div class="border-l-2 border-black p-1">
+<div class="text-3xl font-black leading-none">3</div>
+<div class="text-[7px] uppercase font-black opacity-40 mt-1">FILES</div>
+</div>
+<div class="border-l-2 border-primary p-1">
+<div class="text-3xl font-black text-primary leading-none">2</div>
+<div class="text-[7px] uppercase font-black opacity-40 mt-1">PATCHED</div>
+</div>
+<div class="border-l-2 border-black p-1">
+<div class="text-3xl font-black leading-none">0</div>
+<div class="text-[7px] uppercase font-black opacity-40 mt-1">OPEN</div>
+</div>
+</div>
+<div class="p-3 border-4 border-black bg-surface-container-low italic text-sm font-black leading-tight relative">
+<div class="absolute -top-2 -left-2 bg-primary text-white px-1.5 py-0.5 text-[7px] font-black not-italic">REPORT</div>
+                    "Successfully mitigated CVE-2024-1029 vulnerability in session management."
+                </div>
+</div>
+</div>
+<div class="bg-white flex flex-col h-full">
+<div class="bg-black text-white px-3 py-1 font-black uppercase tracking-widest text-[8px] flex justify-between items-center shrink-0">
+<span>TECHNICAL_PROOFS</span>
+<span class="material-symbols-outlined text-xs text-primary">data_object</span>
+</div>
+<div class="p-4 space-y-2 mono text-[10px] overflow-y-auto flex-grow">
+<div class="flex justify-between border-b-2 border-black pb-1">
+<span class="uppercase opacity-40 font-black text-[7px]">TIMESTAMP</span>
+<span class="font-black">2024-05-15 14:30:22</span>
+</div>
+<div class="flex justify-between border-b-2 border-black pb-1">
+<span class="uppercase opacity-40 font-black text-[7px]">ENGINE</span>
+<span class="font-black">COMMIT_VM_V4.2</span>
+</div>
+<div class="flex justify-between items-center pt-2">
+<span class="uppercase opacity-40 font-black text-[7px]">VALIDATION</span>
+<span class="font-black text-xs text-primary italic">SIG_VERIFIED_ECDSA</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Compressed Arbiter Lane -->
+<section class="bg-black p-4 flex justify-between items-center shrink-0">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-primary flex items-center justify-center border-2 border-white shrink-0">
+<span class="material-symbols-outlined text-white text-2xl">gavel</span>
+</div>
+<div>
+<h4 class="font-black uppercase text-xl text-white tracking-tighter leading-none">ARBITER: <span class="text-primary italic">INACTIVE</span></h4>
+<p class="text-[7px] uppercase font-bold tracking-[0.1em] text-white opacity-40 mt-1">Dispute resolution handled on-chain</p>
+</div>
+</div>
+<button class="border-2 border-white px-4 py-2 bg-white font-black uppercase text-[10px] hover:bg-primary hover:text-white transition-all transform active:scale-95 italic">
+            GOVERNANCE VIEW
+        </button>
+</section>
+</main>
+<!-- Minimal Footer -->
+<footer class="bg-black border-t-4 border-primary flex justify-between items-center w-full px-4 h-12 shrink-0">
+<div class="flex items-center gap-4">
+<div class="bg-primary text-white px-1 py-0.5 font-black text-xs italic uppercase">T/C</div>
+<div class="text-white font-black text-[8px] uppercase tracking-[0.2em] opacity-60">
+            SYSTEM_CORE // STATE_SYNCHRONIZED
+        </div>
+</div>
+<div class="flex gap-6">
+<div class="flex flex-col">
+<span class="text-primary font-black text-[6px] uppercase tracking-widest">ROUTING</span>
+<span class="text-white font-black text-[8px] uppercase">LOCAL_API</span>
+</div>
+<div class="flex flex-col">
+<span class="text-primary font-black text-[6px] uppercase tracking-widest">DB</span>
+<span class="text-white font-black text-[8px] uppercase">SQLITE</span>
+</div>
+</div>
+<div class="font-black text-[8px] uppercase tracking-widest text-white opacity-20 border-l border-white/20 pl-4">
+        CONTRACTS: 0x82...77f1
+    </div>
+</footer>
+</body></html>

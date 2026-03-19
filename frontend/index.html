@@ -1,0 +1,99 @@
+<!doctype html>
+<html class="light" lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TrustCommit | Agent Orchestration Console</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-tint": "#FF0000",
+              "error": "#FF0000",
+              "tertiary-container": "#747474",
+              "error-container": "#ffeaea",
+              "surface-dim": "#dadada",
+              "on-primary-container": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "surface": "#ffffff",
+              "on-primary": "#ffffff",
+              "on-error": "#ffffff",
+              "on-tertiary-fixed-variant": "#474747",
+              "surface-bright": "#ffffff",
+              "inverse-on-surface": "#ffffff",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-highest": "#e2e2e2",
+              "on-secondary": "#ffffff",
+              "on-tertiary-container": "#ffffff",
+              "secondary": "#000000",
+              "surface-container-high": "#e8e8e8",
+              "tertiary-fixed-dim": "#c6c6c6",
+              "on-error-container": "#FF0000",
+              "primary-fixed": "#ffdad4",
+              "surface-container": "#eeeeee",
+              "outline": "#000000",
+              "on-surface": "#000000",
+              "primary-fixed-dim": "#ffb4a8",
+              "on-secondary-fixed-variant": "#474747",
+              "tertiary-fixed": "#e2e2e2",
+              "outline-variant": "#000000",
+              "surface-container-low": "#f3f3f3",
+              "on-secondary-fixed": "#000000",
+              "on-secondary-container": "#000000",
+              "inverse-surface": "#000000",
+              "on-primary-fixed-variant": "#FF0000",
+              "on-primary-fixed": "#330000",
+              "background": "#ffffff",
+              "secondary-fixed-dim": "#c6c6c6",
+              "inverse-primary": "#ffb4a8",
+              "primary": "#FF0000",
+              "on-background": "#000000",
+              "surface-variant": "#e2e2e2",
+              "primary-container": "#FF0000",
+              "on-surface-variant": "#000000",
+              "secondary-container": "#e2e2e2",
+              "on-tertiary-fixed": "#000000",
+              "secondary-fixed": "#e2e2e2",
+              "tertiary": "#5c5c5c"
+            },
+            fontFamily: {
+              headline: ["Inter"],
+              body: ["Space Grotesk"],
+              label: ["Space Grotesk"]
+            },
+            borderRadius: {
+              DEFAULT: "0px",
+              lg: "0px",
+              xl: "0px",
+              full: "9999px"
+            }
+          }
+        }
+      };
+    </script>
+  </head>
+  <body class="bg-surface text-on-surface flex flex-col">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+  </html>

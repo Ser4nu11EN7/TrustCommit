@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.trustcommit/
+out/
+cache/
+broadcast/
+anvil.log
+anvil.out.log
+anvil.err.log
+server.out.log
+server.err.log
+server3101.out.log
+server3101.err.log
+frontend/vite.out.log
+frontend/vite.err.log

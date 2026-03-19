@@ -1,0 +1,26 @@
+{
+  "name": "trustcommit-agent-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsx --test runtime/test/**/*.test.ts",
+    "runtime": "tsx runtime/src/cli.ts",
+    "server": "tsx runtime/src/server.ts",
+    "deploy:stack": "tsx scripts/deploy-stack.ts",
+    "verify:deployment": "tsx scripts/verify-deployment.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "openai": "^4.86.2",
+    "viem": "^2.23.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
