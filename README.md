@@ -201,6 +201,10 @@ npm run runtime -- task:run --id <task-id>
 npm run runtime -- task:finalize --id <task-id>
 npm run runtime -- server:start --port 3000
 npm run preflight:public
+npm run prepare:public -- --config-only
+npm run prepare:public
+npm run public:flow -- --mode submit
+npm run public:flow -- --mode dispute
 ```
 
 Provider notes:
@@ -224,6 +228,8 @@ GET  /tasks
 GET  /tasks/:id
 POST /tasks
 POST /tasks/:id/run
+GET  /tasks/:id/verify
+POST /tasks/:id/export
 POST /tasks/:id/finalize
 POST /tasks/:id/dispute
 POST /tasks/:id/arbiter
@@ -255,6 +261,24 @@ npm run verify:deployment
 ```
 
 The deploy flow uses [DeployTrustCommitStack.s.sol](/C:/Users/SerEN/TrustCommit/script/DeployTrustCommitStack.s.sol). If `STAKE_TOKEN_ADDRESS` and `PAYMENT_TOKEN_ADDRESS` are unset, it deploys a shared mock ERC20 automatically and uses it for both stake and payment.
+
+### Public Proof Flow
+Once public addresses are saved into `.env`, prepare the runtime and public actors:
+
+```bash
+npm run preflight:public
+npm run prepare:public -- --config-only
+npm run prepare:public
+```
+
+Then generate public evidence:
+
+```bash
+npm run public:flow -- --mode submit
+npm run public:flow -- --mode dispute
+```
+
+`submit` gives you a same-day public proof bundle and receipt trail, while `dispute` gives you a same-day resolution path without waiting for the 7-day dispute window to expire.
 
 ## Events
 

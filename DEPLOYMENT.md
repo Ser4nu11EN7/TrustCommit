@@ -13,7 +13,7 @@ Deploy a working stack with:
 
 The deployment output should give you real contract addresses and explorer-verifiable receipts that support the core narrative:
 
-`TrustCommit turns autonomous agents into accountable onchain counterparties.`
+`TrustCommit makes agents sign for what they do.`
 
 ## Prerequisites
 
@@ -110,10 +110,73 @@ This script checks:
 - `COVENANT_ROLE` is granted on the registry
 - `ARBITER_ROLE` is granted on the covenant
 
+## Sync the Runtime to Public Contracts
+
+Once the addresses are written into `.env`, persist the public chain context into `.trustcommit/config.json`:
+
+```bash
+npm run prepare:public -- --config-only
+```
+
+This records:
+
+- live `chainId`
+- runtime `rpcUrl`
+- `trustRegistry`, `covenant`, and token addresses
+- the current public runtime account map
+
+## Prepare Public Runtime Actors
+
+If you deployed a shared mock token, you can prepare the public runtime actors with one command:
+
+```bash
+npm run prepare:public
+```
+
+This script:
+
+1. mints payment tokens to the creator wallet
+2. mints stake tokens to the executor owner wallet
+3. registers the executor agent on `TrustRegistry`
+4. stakes the executor agent
+5. rotates the execution wallet if `executorOwner` and `executionWallet` differ
+
+If you are using a non-mintable token, skip the mint phase and fund the wallets manually first:
+
+```bash
+npm run prepare:public -- --skip-mint
+```
+
+The script writes a structured report to:
+
+```text
+.trustcommit/public-proof/public-prep/public-prep.json
+```
+
+## Generate Public Proof
+
+After the actors are ready, generate public evidence with one of these flows:
+
+```bash
+npm run public:flow -- --mode submit
+npm run public:flow -- --mode dispute
+```
+
+- `submit` creates, accepts, executes, verifies, and exports a public procurement covenant bundle
+- `dispute` does the same, then opens a dispute and resolves it immediately through the arbiter path
+
+Both flows write a portable bundle and summary file under:
+
+```text
+.trustcommit/public-proof/<task-id>/
+```
+
+Use `dispute` when you need a same-day publicly settled outcome. `finalizeCompletion` still respects the onchain 7-day dispute window on public chains.
+
 ## Post-Deploy Checklist
 
 - [ ] explorer links recorded for token, `TrustRegistry`, and `Covenant`
-- [ ] one successful runtime flow produces task creation, completion submission, and finalization tx hashes
+- [ ] one successful runtime flow produces task creation, acceptance, submission, and either dispute+resolution or post-window finalization tx hashes
 - [ ] addresses copied into README and demo notes
 - [ ] `npm run verify:deployment` returns `"ok": true`
 

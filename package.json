@@ -9,6 +9,8 @@
     "runtime": "tsx runtime/src/cli.ts",
     "server": "tsx runtime/src/server.ts",
     "preflight:public": "tsx scripts/public-preflight.ts",
+    "prepare:public": "tsx scripts/prepare-public-demo.ts",
+    "public:flow": "tsx scripts/run-public-flow.ts",
     "deploy:stack": "tsx scripts/deploy-stack.ts",
     "verify:deployment": "tsx scripts/verify-deployment.ts"
   },

@@ -85,10 +85,10 @@ export function resolveRuntimeConfig(workspaceRoot = process.cwd()): RuntimeConf
     dbPath,
     artifactDir,
     rpcUrl: process.env.TC_RPC_URL ?? persisted.rpcUrl ?? "http://127.0.0.1:8545",
+    chainId: process.env.TC_CHAIN_ID ? Number(process.env.TC_CHAIN_ID) : persisted.chainId,
     primaryProvider: (process.env.TC_PRIMARY_PROVIDER as RuntimeConfig["primaryProvider"]) ?? persisted.primaryProvider ?? "mock",
     fallbackProvider:
       (process.env.TC_FALLBACK_PROVIDER as RuntimeConfig["fallbackProvider"]) ?? persisted.fallbackProvider ?? "mock",
-    chainId: persisted.chainId,
     addresses: persisted.addresses,
     accounts: accounts as RuntimeConfig["accounts"]
   };
