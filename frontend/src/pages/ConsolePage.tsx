@@ -713,7 +713,7 @@ export function ConsolePage() {
                 <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: statusColor(selectedTask?.status), textTransform: 'uppercase', letterSpacing: '0.2em', border: `1px solid ${statusColor(selectedTask?.status)}`, padding: '0.125rem 0.5rem', backgroundColor: 'rgba(115,115,115,0.1)' }}>
                   {details?.disputeRecord ? 'Disputed' : details?.resolutionRecord ? 'Resolved' : selectedTask?.status === 'submitted' ? 'Awaiting Consensus' : selectedTask?.status === 'completed' ? 'Settled' : 'Executing'}
                 </span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3' }}>{detailsLoading ? 'Loading selected covenant...' : selectedTask ? `Reward: ${formatToken(selectedTask.reward)} USDC` : 'Awaiting covenant selection'}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3' }}>{detailsLoading ? 'Loading selected covenant...' : selectedTask ? `Procurement reward: ${formatToken(selectedTask.reward)} USDC` : 'Awaiting covenant selection'}</span>
               </div>
               <h1 style={{ fontSize: '1.875rem', fontWeight: 300, color: '#ffffff', letterSpacing: '-0.025em', marginTop: '0.5rem', marginBottom: '1rem' }}>{selectedTask?.title ?? 'TrustCommit Console'}</h1>
 
@@ -745,7 +745,7 @@ export function ConsolePage() {
                     <span>Model: {latestRun?.model ?? 'waiting'}</span>
                   </div>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.62rem', color: '#737373', marginTop: '0.35rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    Validator: {selectedLog?.verification?.profile ?? 'unassigned'}
+                    Covenant validator: {selectedLog?.verification?.profile ?? 'unassigned'}
                   </div>
                 </div>
               </div>
@@ -758,7 +758,7 @@ export function ConsolePage() {
                     {manifest?.operator?.address ?? 'No operator wallet'}
                   </div>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.62rem', color: '#737373', marginTop: '0.35rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '12rem' }}>
-                    Profile: {selectedLog?.task?.commitmentProfile ?? 'unassigned'}
+                    Commitment profile: {selectedLog?.task?.commitmentProfile ?? 'unassigned'}
                   </div>
                 </div>
               </div>
@@ -767,8 +767,8 @@ export function ConsolePage() {
             {/* Terminal Log */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#000000', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', padding: '0.5rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.15)', backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Runtime State Logging</span>
-                <span className="blink" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em' }}>{detailsLoading ? 'Reading receipts' : 'Recording to receipt'}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Execution and Receipt Logging</span>
+                <span className="blink" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em' }}>{detailsLoading ? 'Reading receipts' : 'Recording accountable execution'}</span>
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', paddingTop: '3rem', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3', lineHeight: '1.6', position: 'relative' }}>
@@ -788,7 +788,7 @@ export function ConsolePage() {
             {/* Artifacts */}
             <div style={{ height: '12rem', borderTop: '1px solid rgba(255,255,255,0.08)', backgroundColor: '#000000', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
               <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Execution Artifacts ({artifactEntries.length})</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Execution Artifacts and Receipts ({artifactEntries.length})</span>
                 <button
                   type="button"
                   onClick={() => handleTaskAction('export')}
@@ -851,13 +851,13 @@ export function ConsolePage() {
 
             {/* Header */}
             <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.05)', textAlign: 'center' }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#ffffff', letterSpacing: '0.2em', textTransform: 'uppercase' }}>Accountability Protocol</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#ffffff', letterSpacing: '0.2em', textTransform: 'uppercase' }}>Agent Procurement Console</span>
             </div>
 
             {/* Cryptographic Evidence */}
             <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 300 }}>
-                <span>Cryptographic Evidence</span>
+                <span>Proof and Receipts</span>
                 <span style={{ fontSize: '0.6rem', padding: '0.125rem 0.375rem', border: '1px solid rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.1)', color: '#ffffff' }}>{selectedLog?.verification?.schemaSatisfied ? 'Secured' : 'Review'}</span>
               </h3>
 
@@ -918,7 +918,7 @@ export function ConsolePage() {
 
             {/* Consensus State */}
             <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', flex: 1 }}>
-              <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '1.5rem', fontWeight: 300 }}>Consensus State</h3>
+              <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '1.5rem', fontWeight: 300 }}>Commitment Lifecycle</h3>
 
               <div style={{ position: 'relative' }}>
                 <div style={{ position: 'absolute', left: '7px', top: '0.5rem', bottom: '0.5rem', width: '2px', backgroundColor: 'rgba(255,255,255,0.08)' }}></div>
@@ -930,7 +930,7 @@ export function ConsolePage() {
                     <div style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#737373', borderRadius: '9999px' }}></div>
                   </div>
                   <div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', marginBottom: '0.25rem' }}>Covenant Created</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', marginBottom: '0.25rem' }}>Covenant Accepted</div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252' }}>{details?.receiptRecord?.receipts?.createTxHash ? `Confirmed ${shortHash(details.receiptRecord.receipts.createTxHash)}` : 'Awaiting create receipt'}</div>
                     {canRun ? (
                       <button
@@ -939,7 +939,7 @@ export function ConsolePage() {
                         onClick={() => handleTaskAction('run')}
                         style={actionLinkStyle(actionLoading === 'run')}
                       >
-                        {actionLoading === 'run' ? 'Executing...' : 'Execute Covenant'}
+                        {actionLoading === 'run' ? 'Executing...' : 'Execute Procurement Task'}
                       </button>
                     ) : null}
                   </div>
@@ -963,7 +963,7 @@ export function ConsolePage() {
                         onClick={() => handleTaskAction('verify')}
                         style={actionLinkStyle(actionLoading === 'verify')}
                       >
-                        {actionLoading === 'verify' ? 'Verifying...' : 'Run Verifier'}
+                        {actionLoading === 'verify' ? 'Verifying...' : 'Verify Commitment'}
                       </button>
                     ) : null}
                   </div>
@@ -973,7 +973,7 @@ export function ConsolePage() {
                 <div style={{ display: 'flex', gap: '1rem', position: 'relative', opacity: 0.5 }}>
                   <div style={{ width: '1rem', height: '1rem', borderRadius: '9999px', backgroundColor: '#000000', border: '2px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 10, marginTop: '0.125rem' }}></div>
                   <div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3', marginBottom: '0.25rem' }}>{details?.resolutionRecord ? 'Resolved' : 'Settlement & Payout'}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3', marginBottom: '0.25rem' }}>{details?.resolutionRecord ? 'Resolved' : 'Settlement and Consequence'}</div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252' }}>{details?.resolutionRecord ? `${details.resolutionRecord.outcome} ${shortHash(details.resolutionRecord.txHash)}` : details?.receiptRecord?.receipts?.finalizeTxHash ? `Settled ${shortHash(details.receiptRecord.receipts.finalizeTxHash)}` : 'Awaiting settlement'}</div>
                     {canFinalize ? (
                       <button
@@ -982,7 +982,7 @@ export function ConsolePage() {
                         onClick={() => handleTaskAction('finalize')}
                         style={actionLinkStyle(actionLoading === 'finalize')}
                       >
-                        {actionLoading === 'finalize' ? 'Finalizing...' : 'Finalize Payout'}
+                        {actionLoading === 'finalize' ? 'Finalizing...' : 'Finalize Settlement'}
                       </button>
                     ) : null}
                   </div>
@@ -1083,13 +1083,13 @@ const DisputePanel = ({
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1rem' }}>
         <div style={{ width: '1rem', height: '1rem', marginTop: '0.125rem', border: '1px solid #ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.5rem', color: '#ffffff', flexShrink: 0 }}>!</div>
         <div>
-          <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '0.25rem', fontWeight: 300 }}>Dispute Mechanism</h3>
+          <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '0.25rem', fontWeight: 300 }}>Dispute and Resolution</h3>
           <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#a3a3a3', lineHeight: '1.6' }}>
             {resolutionRecord
               ? `Resolved ${resolutionRecord.outcome}. ${resolutionRecord.reason}`
               : disputeRecord
                 ? `${disputeRecord.reason} (${shortHash(disputeRecord.txHash)})`
-                : <>If the output violates covenant parameters, the creator can challenge with a reviewable receipt trail and onchain dispute flow.</>}
+                : <>If the procurement decision violates the covenant boundary, the creator can challenge it with a reviewable receipt trail and onchain dispute flow.</>}
           </p>
         </div>
       </div>
@@ -1099,7 +1099,7 @@ const DisputePanel = ({
           <textarea
             value={disputeDraft}
             onChange={(event) => setDisputeDraft(event.target.value)}
-            placeholder="State the covenant violation or evidence mismatch."
+            placeholder="State the procurement covenant violation or evidence mismatch."
             rows={4}
             style={{
               resize: 'vertical',

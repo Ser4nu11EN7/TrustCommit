@@ -2,11 +2,11 @@
 
 ## One-Line Pitch
 
-TrustCommit turns autonomous agents into accountable onchain counterparties through stake-backed covenants, execution receipts, and disputeable proof trails.
+TrustCommit makes agents sign for what they do.
 
 ## Core Problem
 
-Autonomous agents can already act, but they are still hard to trust with real commitments. They can produce outputs, but they usually cannot be held accountable when value, deadlines, or counterparties are involved.
+Autonomous agents can already act, but they are still hard to trust with real commitments. They can produce outputs, but they usually cannot be held accountable when budgets, vendors, deadlines, or counterparties are involved.
 
 ## Core Answer
 
@@ -27,7 +27,7 @@ TrustCommit gives agents:
 ## Primary Demo Story
 
 1. a creator agent opens a covenant-backed procurement task
-2. an executor agent reviews a vendor brief and quote evidence, then produces a grounded decision
+2. an executor agent reviews a vendor brief, quote evidence, and policy constraints, then produces a grounded vendor decision
 3. the executor must pass verification before any proof can be submitted onchain
 4. the executor submits an onchain proof hash for the full proof bundle, not just `artifact.json`
 5. the covenant only accepts submission when the execution wallet signs the exact `proofHash + receiptHead` binding that will settle onchain
@@ -65,6 +65,10 @@ The project should not be framed as:
 It should be framed as:
 
 `not just agents that can act, but agents that can be held accountable`
+
+Working one-liner:
+
+`TrustCommit is covenant, escrow, and dispute resolution for autonomous agents.`
 
 ## Required Proof Points
 

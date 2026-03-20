@@ -1,10 +1,10 @@
 # TrustCommit
 
-TrustCommit turns autonomous agents into accountable onchain counterparties through stake-backed covenants, execution receipts, and disputeable proof trails.
+TrustCommit makes agents sign for what they do.
 
 ## Overview
 
-Autonomous agents can already act, but they are still difficult to trust with real commitments. TrustCommit makes those commitments legible and enforceable:
+Autonomous agents can already act, but they are still difficult to trust with real commitments. TrustCommit turns agent procurement into something legible and enforceable:
 
 - agents register into a trust layer and post stake
 - creators open covenant-backed task proposals
@@ -16,6 +16,10 @@ Autonomous agents can already act, but they are still difficult to trust with re
 Core narrative:
 
 `Not just agents that can act. Agents that can be held accountable.`
+
+Practical framing:
+
+`TrustCommit is covenant, escrow, and dispute resolution for autonomous agents.`
 
 ## Architecture
 

@@ -398,12 +398,12 @@ export function LandingPage() {
           <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" />
           <div className="pointer-events-auto absolute bottom-16 left-10 z-20 max-w-4xl md:left-20">
             <h1 id="main-heading" className="mb-6 text-5xl font-light leading-[1.05] tracking-tight text-[#E8E6E0] md:text-[5rem]">
-              Accountable
+              Agents Should Sign
               <br />
-              Autonomous Agents
+              For What They Do
             </h1>
             <p className="max-w-2xl text-lg font-light tracking-tight text-[#888880] md:text-xl">
-              Agents already know how to act. TrustCommit makes them answer for what they do with commitments, receipts, verification, and dispute-ready execution.
+              TrustCommit gives autonomous agents covenants, escrow, receipts, verification, and dispute resolution so they can make real commitments, not just generate outputs.
             </p>
           </div>
         </div>
@@ -415,7 +415,7 @@ export function LandingPage() {
                 {timeDisplay}
               </span>
               <p className="bio-text max-w-md text-[0.95rem] font-light leading-relaxed text-[#E8E6E0]">
-                TrustCommit is the missing accountability layer for the autonomous web: identity, stake, covenant boundaries, evidence policies, receipt heads, and consequences.
+                TrustCommit turns agent procurement into an accountable workflow: explicit commitments, bounded execution, signed receipts, independent verification, and consequences when the covenant is broken.
               </p>
             </div>
             <div>
@@ -471,9 +471,9 @@ export function LandingPage() {
             <div className="flex min-h-[40vh] flex-col justify-between border-b border-[rgba(232,230,224,0.1)] p-10 transition-colors duration-500 hover:bg-[#111] md:border-b-0 md:border-r md:border-[rgba(232,230,224,0.1)] md:p-20">
               <div className="mb-12 font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-widest text-[#888880]">// The Status Quo</div>
               <div>
-                <h2 className="mb-6 text-3xl font-light tracking-tight text-[#E8E6E0] md:text-4xl">Unverifiable Action</h2>
+                <h2 className="mb-6 text-3xl font-light tracking-tight text-[#E8E6E0] md:text-4xl">Outputs Without Obligation</h2>
                 <p className="max-w-md text-[0.95rem] font-light leading-relaxed text-[#888880]">
-                  Current AI agents operate in black boxes. They take actions on behalf of users without cryptographic proof of intent, execution steps, or constraints adherence. In the current paradigm, trust is assumed, never proven.
+                  Current AI agents can recommend, select, and act, but they rarely accept a binding obligation. When they miss budget limits, choose the wrong vendor, or violate a policy boundary, users get outputs without enforceable accountability.
                 </p>
               </div>
             </div>
@@ -484,9 +484,9 @@ export function LandingPage() {
                 // The TrustCommit Standard
               </div>
               <div>
-                <h2 className="mb-6 text-3xl font-light tracking-tight text-[#E8E6E0] md:text-4xl">Cryptographic Truth</h2>
+                <h2 className="mb-6 text-3xl font-light tracking-tight text-[#E8E6E0] md:text-4xl">Commitment Before Action</h2>
                 <p className="max-w-md text-[0.95rem] font-light leading-relaxed text-[#888880]">
-                  TrustCommit introduces a covenant-based architecture. Every agent action is bound by a predefined, cryptographically signed commitment, generating immutable, verifiable receipts upon execution.
+                  TrustCommit makes the agent accept a covenant before it acts. The runtime then binds execution, evidence, receipts, verification, and dispute resolution to that exact commitment.
                 </p>
               </div>
             </div>
@@ -495,7 +495,7 @@ export function LandingPage() {
           <section className="border-b border-[rgba(232,230,224,0.1)] p-10 md:p-20">
             <div className="mb-20 max-w-3xl">
               <h2 className="mb-6 text-4xl font-light tracking-tight text-[#E8E6E0] md:text-5xl">Architecture of Accountability</h2>
-              <p className="text-lg font-light text-[#888880]">A full-stack protocol for deterministic accountability in non-deterministic systems.</p>
+              <p className="text-lg font-light text-[#888880]">A procurement covenant becomes a signed obligation, an evidence trail, and a disputeable settlement path.</p>
             </div>
 
             <div className="grid grid-cols-1 gap-x-12 gap-y-20 md:grid-cols-3">
@@ -503,32 +503,32 @@ export function LandingPage() {
                 {
                   num: "01",
                   label: "Identity",
-                  title: "Agent DIDs",
-                  desc: "Agents are issued Decentralized Identifiers (DIDs). Reputation, permissions, and past execution receipts are cryptographically bound to this identity, ensuring persistent, cross-platform accountability."
+                  title: "Agent Identity",
+                  desc: "Every accountable action starts with a named execution authority. Identity, operator rights, and past receipts stay attached to the same agent surface."
                 },
                 {
                   num: "02",
                   label: "Commitment",
-                  title: "Smart Covenants",
-                  desc: "Before execution, agents lock conditions into a Computable Covenant—a digital contract defining explicit constraints, allowed resource expenditure, and expected deterministic outputs."
+                  title: "Procurement Covenants",
+                  desc: "Before execution, the agent accepts a procurement covenant with explicit budget, selection, and policy boundaries. The obligation exists before the output."
                 },
                 {
                   num: "03",
                   label: "Execution",
-                  title: "Immutable Receipts",
-                  desc: "During action, agents generate cryptographic proofs of their decision trees and external API interactions. These are hashed and logged to a decentralized, append-only ledger."
+                  title: "Signed Execution",
+                  desc: "The agent inspects evidence, produces a vendor decision, and signs a proof bundle that ties the decision to the covenant it accepted."
                 },
                 {
                   num: "04",
                   label: "Verification",
-                  title: "Zero-Knowledge Proofs",
-                  desc: "Anyone can run the TrustCommit Verifier against a receipt to deterministically prove that an agent adhered to its original covenant, without exposing sensitive operational data."
+                  title: "Independent Verification",
+                  desc: "Anyone can replay validation against the preserved evidence and receipt chain to determine whether the agent stayed inside its procurement covenant."
                 },
                 {
                   num: "05",
                   label: "Resolution",
-                  title: "Automated Dispute",
-                  desc: "Built-in slasher mechanisms and optimistic rollups allow for automated penalization and state reversion if an agent's receipt fails cryptographic verification against its signed covenant."
+                  title: "Dispute and Consequence",
+                  desc: "If the receipt trail or evidence no longer supports the decision, the task can be challenged, resolved, and settled with explicit consequences."
                 }
               ].map((item) => {
                 const featured = item.num === "02" || item.num === "04";
@@ -558,7 +558,7 @@ export function LandingPage() {
               <div>
                 <div className="font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-widest text-[#888880]">Operational Surface</div>
                 <p className="mt-4 max-w-md text-[0.95rem] font-light leading-relaxed text-[#b6b2a9]">
-                  The console exposes the live side of the protocol: active covenants, execution traces, evidence packs, verifier state, receipt chains, and dispute lanes.
+                  The console exposes the operational side of the protocol: active procurement covenants, execution traces, evidence packs, receipt chains, verifier state, and dispute lanes.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-[0.22em] text-[#E8E6E0] md:grid-cols-4">
