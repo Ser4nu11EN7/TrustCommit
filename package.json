@@ -8,6 +8,7 @@
     "test": "tsx --test runtime/test/**/*.test.ts",
     "runtime": "tsx runtime/src/cli.ts",
     "server": "tsx runtime/src/server.ts",
+    "preflight:public": "tsx scripts/public-preflight.ts",
     "deploy:stack": "tsx scripts/deploy-stack.ts",
     "verify:deployment": "tsx scripts/verify-deployment.ts"
   },

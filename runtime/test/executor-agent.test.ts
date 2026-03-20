@@ -132,6 +132,11 @@ test("executor agent exports artifact and grounded agent log", async () => {
     covenantId: "0x1111111111111111111111111111111111111111111111111111111111111111",
     executorAgentId: 1,
     createdBy: "mock",
+    commitmentProfile: "structured_commitment",
+    evidencePolicyJson: JSON.stringify({
+      requiredPaths: ["README.md"],
+      rationale: ["README must remain inside the evidence set."]
+    }),
     proofHash: null,
     taskHash: "0x2222222222222222222222222222222222222222222222222222222222222222",
     artifactPath: null,
@@ -152,12 +157,16 @@ test("executor agent exports artifact and grounded agent log", async () => {
       missingFields: string[];
       validatorResults: Array<{ name: string; passed: boolean }>;
     };
+    task: {
+      commitmentProfile: string | null;
+      evidencePolicy: { requiredPaths: string[]; rationale: string[] } | null;
+    };
     budget: { attemptsUsed: number; modelCalls: number };
     guardrails: { preExecution: string[]; duringExecution: string[]; preCommit: string[] };
     receiptChain: {
       taskCommitment: { covenantId: string | null; taskHash: string | null };
       executionArtifacts: { proofBundlePath: string };
-      onchain: { proofHash: string; artifactHash: string; submitTxHash: string | null };
+      onchain: { acceptTxHash: string | null; proofHash: string; artifactHash: string; submitTxHash: string | null };
     };
     steps: Array<{ type: string }>;
   };
@@ -170,6 +179,8 @@ test("executor agent exports artifact and grounded agent log", async () => {
   assert.deepEqual(agentLog.verification.missingFields, []);
   assert.ok(agentLog.verification.validatorResults.length >= 4);
   assert.ok(agentLog.evidence.files.length >= 2);
+  assert.equal(agentLog.task.commitmentProfile, "structured_commitment");
+  assert.deepEqual(agentLog.task.evidencePolicy?.requiredPaths, ["README.md"]);
   assert.equal(agentLog.plan.maxAttempts, 2);
   assert.equal(agentLog.budget.attemptsUsed, 1);
   assert.equal(agentLog.budget.modelCalls, 2);
@@ -178,6 +189,7 @@ test("executor agent exports artifact and grounded agent log", async () => {
   assert.equal(agentLog.guardrails.preCommit.length, 3);
   assert.equal(agentLog.receiptChain.taskCommitment.covenantId, task.covenantId);
   assert.equal(agentLog.receiptChain.taskCommitment.taskHash, task.taskHash);
+  assert.equal(agentLog.receiptChain.onchain.acceptTxHash, null);
   assert.ok(agentLog.receiptChain.onchain.proofHash.startsWith("0x"));
   assert.ok(agentLog.receiptChain.onchain.artifactHash.startsWith("0x"));
   assert.equal(agentLog.receiptChain.onchain.submitTxHash, null);
@@ -229,6 +241,8 @@ test("executor agent blocks submission when verification never passes", async ()
     covenantId: "0x1111111111111111111111111111111111111111111111111111111111111111",
     executorAgentId: 1,
     createdBy: "mock",
+    commitmentProfile: "structured_commitment",
+    evidencePolicyJson: null,
     proofHash: null,
     taskHash: "0x2222222222222222222222222222222222222222222222222222222222222222",
     artifactPath: null,

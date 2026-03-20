@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "../contracts/Covenant.sol";
 import "../contracts/TrustRegistry.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract MockERC20Decimals is ERC20 {
     uint8 private immutable _tokenDecimals;
@@ -23,8 +24,11 @@ contract MockERC20Decimals is ERC20 {
 }
 
 contract CovenantTest is Test {
-    bytes32 internal constant ARBITER_ROLE = keccak256("ARBITER_ROLE");
     bytes32 internal constant COVENANT_ROLE = keccak256("COVENANT_ROLE");
+    bytes32 internal constant SUBMIT_COMPLETION_TYPEHASH =
+        keccak256("SubmitCompletion(bytes32 covenantId,bytes32 taskHash,bytes32 proofHash,bytes32 receiptHead)");
+    bytes32 internal constant ACCEPT_EXECUTION_ROLE_TYPEHASH =
+        keccak256("AcceptExecutionRole(uint256 agentId,address newWallet,uint256 nonce)");
     uint128 internal constant MIN_REWARD = 1e6;
     uint128 internal constant DEFAULT_REWARD = 10e6;
     uint128 internal constant DEFAULT_STAKE = 500e18;
@@ -37,12 +41,19 @@ contract CovenantTest is Test {
     address internal admin = address(1);
     address internal arbiter = address(2);
     address internal creator = address(3);
-    address internal executorOwner = address(4);
+    uint256 internal executorOwnerPk = 0xA11CE;
+    uint256 internal executionWalletPk = 0xB0B;
+    uint256 internal rotatedExecutionWalletPk = 0xC0DE;
+    address internal executorOwner;
+    address internal executionWallet;
     address internal outsider = address(5);
 
     uint256 internal executorAgentId;
 
     function setUp() public {
+        executorOwner = vm.addr(executorOwnerPk);
+        executionWallet = vm.addr(executionWalletPk);
+
         vm.startPrank(admin);
         stakeToken = new MockERC20Decimals("Stake Token", "STK", 18);
         paymentToken = new MockERC20Decimals("Mock USDC", "mUSDC", 6);
@@ -61,11 +72,12 @@ contract CovenantTest is Test {
         executorAgentId = registry.registerAgent(executorOwner, "ipfs://executor", bytes32("executor-profile"));
         stakeToken.approve(address(registry), type(uint256).max);
         registry.stake(executorAgentId, 1_000e18);
+        registry.updateExecutionWallet(executorAgentId, executionWallet, _signExecutionWalletAcceptance(executorAgentId, executionWallet, executionWalletPk));
         vm.stopPrank();
     }
 
-    function testCreateCovenantEscrowsRewardAndLocksStake() public {
-        bytes32 covenantId = _createDefaultCovenant();
+    function testCreateCovenantEscrowsRewardWithoutLockingStakeBeforeAcceptance() public {
+        bytes32 covenantId = _proposeDefaultCovenant();
 
         (
             ICovenant.CovenantStatus status,
@@ -78,7 +90,7 @@ contract CovenantTest is Test {
             bytes32 taskHash
         ) = covenant.covenants(covenantId);
 
-        assertEq(uint8(status), uint8(ICovenant.CovenantStatus.Active));
+        assertEq(uint8(status), uint8(ICovenant.CovenantStatus.Pending));
         assertEq(storedCreator, creator);
         assertEq(storedExecutorAgentId, executorAgentId);
         assertEq(reward, DEFAULT_REWARD);
@@ -86,18 +98,32 @@ contract CovenantTest is Test {
         assertEq(taskHash, bytes32("task-1"));
         assertGt(deadline, block.timestamp);
         assertEq(paymentToken.balanceOf(address(covenant)), DEFAULT_REWARD);
+        assertEq(registry.lockedTotal(executorAgentId), 0);
+    }
+
+    function testExecutionWalletMustAcceptBeforeStakeLocks() public {
+        bytes32 covenantId = _proposeDefaultCovenant();
+
+        vm.prank(executionWallet);
+        covenant.acceptCovenant(covenantId);
+
+        assertEq(uint8(_statusOf(covenantId)), uint8(ICovenant.CovenantStatus.Active));
         assertEq(registry.lockedTotal(executorAgentId), DEFAULT_STAKE);
     }
 
-    function testSubmitAndFinalizeCompletionReleasesReward() public {
+    function testSubmitAndFinalizeCompletionReleasesRewardWithAnchoredReceiptHead() public {
         bytes32 covenantId = _createDefaultCovenant();
         bytes32 proofHash = keccak256("proof");
+        bytes32 receiptHead = keccak256("receipt-head");
+        bytes memory operatorSignature = _signCompletion(covenantId, bytes32("task-1"), proofHash, receiptHead, executionWalletPk);
 
-        vm.prank(executorOwner);
-        covenant.submitCompletion(covenantId, proofHash);
+        vm.prank(outsider);
+        covenant.submitCompletion(covenantId, proofHash, receiptHead, operatorSignature);
 
         assertEq(uint8(_statusOf(covenantId)), uint8(ICovenant.CovenantStatus.Submitted));
         assertEq(covenant.completionProof(covenantId), proofHash);
+        assertEq(covenant.completionReceiptHead(covenantId), receiptHead);
+        assertEq(covenant.completionSigner(covenantId), executionWallet);
 
         vm.warp(block.timestamp + 7 days);
 
@@ -113,11 +139,13 @@ contract CovenantTest is Test {
     function testCreatorCanDisputeAndArbiterCanResolveForExecutor() public {
         bytes32 covenantId = _createDefaultCovenant();
         bytes32 proofHash = keccak256("proof");
+        bytes32 receiptHead = keccak256("receipt-head");
         bytes32 evidenceHash = keccak256("evidence");
         bytes32 resultHash = keccak256("executor-wins");
+        bytes memory operatorSignature = _signCompletion(covenantId, bytes32("task-1"), proofHash, receiptHead, executionWalletPk);
 
-        vm.prank(executorOwner);
-        covenant.submitCompletion(covenantId, proofHash);
+        vm.prank(outsider);
+        covenant.submitCompletion(covenantId, proofHash, receiptHead, operatorSignature);
 
         vm.prank(creator);
         covenant.disputeCovenant(covenantId, evidenceHash);
@@ -138,8 +166,14 @@ contract CovenantTest is Test {
 
     function testCreatorWinDisputeRefundsRewardAndSlashesStake() public {
         bytes32 covenantId = _createDefaultCovenant();
+        bytes32 proofHash = keccak256("proof");
+        bytes32 receiptHead = keccak256("receipt-head");
         bytes32 evidenceHash = keccak256("bad-work");
         bytes32 resultHash = keccak256("creator-wins");
+        bytes memory operatorSignature = _signCompletion(covenantId, bytes32("task-1"), proofHash, receiptHead, executionWalletPk);
+
+        vm.prank(outsider);
+        covenant.submitCompletion(covenantId, proofHash, receiptHead, operatorSignature);
 
         vm.prank(creator);
         covenant.disputeCovenant(covenantId, evidenceHash);
@@ -174,6 +208,22 @@ contract CovenantTest is Test {
         assertEq(registry.lockedTotal(executorAgentId), 0);
     }
 
+    function testTimeoutPendingCovenantRefundsWithoutSlashing() public {
+        bytes32 covenantId = _proposeDefaultCovenant();
+
+        vm.warp(block.timestamp + 2 days);
+
+        uint256 creatorPaymentBefore = paymentToken.balanceOf(creator);
+        uint256 creatorStakeBefore = stakeToken.balanceOf(creator);
+
+        covenant.timeoutCovenant(covenantId);
+
+        assertEq(uint8(_statusOf(covenantId)), uint8(ICovenant.CovenantStatus.Cancelled));
+        assertEq(paymentToken.balanceOf(creator), creatorPaymentBefore + DEFAULT_REWARD);
+        assertEq(stakeToken.balanceOf(creator), creatorStakeBefore);
+        assertEq(registry.lockedTotal(executorAgentId), 0);
+    }
+
     function testCancelRequiresBothParties() public {
         bytes32 covenantId = _createDefaultCovenant();
 
@@ -196,7 +246,7 @@ contract CovenantTest is Test {
     function testCannotCreateBelowMinimumReward() public {
         vm.startPrank(creator);
         paymentToken.approve(address(covenant), type(uint256).max);
-        vm.expectRevert("Reward too low");
+        vm.expectRevert(Covenant.RewardTooLow.selector);
         covenant.createCovenant(
             executorAgentId,
             MIN_REWARD - 1,
@@ -207,16 +257,114 @@ contract CovenantTest is Test {
         vm.stopPrank();
     }
 
-    function testOnlyExecutorOwnerCanSubmitCompletion() public {
-        bytes32 covenantId = _createDefaultCovenant();
+    function testOnlyExecutionWalletCanAcceptCovenant() public {
+        bytes32 covenantId = _proposeDefaultCovenant();
+
+        vm.prank(executorOwner);
+        vm.expectRevert(Covenant.OnlyExecutionWallet.selector);
+        covenant.acceptCovenant(covenantId);
+    }
+
+    function testCannotSubmitCompletionBeforeAcceptance() public {
+        bytes32 covenantId = _proposeDefaultCovenant();
+        bytes32 proofHash = keccak256("proof");
+        bytes32 receiptHead = keccak256("receipt-head");
+        bytes memory operatorSignature = _signCompletion(covenantId, bytes32("task-1"), proofHash, receiptHead, executionWalletPk);
 
         vm.prank(outsider);
-        vm.expectRevert("Not executor");
-        covenant.submitCompletion(covenantId, keccak256("proof"));
+        vm.expectRevert(Covenant.InvalidStatus.selector);
+        covenant.submitCompletion(covenantId, proofHash, receiptHead, operatorSignature);
+    }
+
+    function testSubmitCompletionRequiresExecutionWalletAttestation() public {
+        bytes32 covenantId = _createDefaultCovenant();
+        bytes32 proofHash = keccak256("proof");
+        bytes32 receiptHead = keccak256("receipt-head");
+        bytes memory invalidSignature = _signCompletion(covenantId, bytes32("task-1"), proofHash, receiptHead, executorOwnerPk);
+
+        vm.prank(outsider);
+        vm.expectRevert(Covenant.InvalidOperatorAttestation.selector);
+        covenant.submitCompletion(covenantId, proofHash, receiptHead, invalidSignature);
+    }
+
+    function testExecutionWalletRotationInvalidatesOldSignature() public {
+        bytes32 covenantId = _createDefaultCovenant();
+        bytes32 proofHash = keccak256("proof");
+        bytes32 receiptHead = keccak256("receipt-head");
+        bytes memory oldSignature = _signCompletion(covenantId, bytes32("task-1"), proofHash, receiptHead, executionWalletPk);
+        address rotatedWallet = vm.addr(rotatedExecutionWalletPk);
+        bytes memory rotationProof =
+            _signExecutionWalletAcceptance(executorAgentId, rotatedWallet, rotatedExecutionWalletPk);
+
+        vm.prank(executorOwner);
+        registry.updateExecutionWallet(
+            executorAgentId,
+            rotatedWallet,
+            rotationProof
+        );
+
+        vm.prank(outsider);
+        vm.expectRevert(Covenant.InvalidOperatorAttestation.selector);
+        covenant.submitCompletion(covenantId, proofHash, receiptHead, oldSignature);
+
+        bytes memory rotatedSignature =
+            _signCompletion(covenantId, bytes32("task-1"), proofHash, receiptHead, rotatedExecutionWalletPk);
+
+        vm.prank(outsider);
+        covenant.submitCompletion(covenantId, proofHash, receiptHead, rotatedSignature);
+
+        assertEq(covenant.completionSigner(covenantId), rotatedWallet);
+    }
+
+    function testExecutionWalletRotationRequiresNewWalletConsent() public {
+        vm.prank(executorOwner);
+        vm.expectRevert();
+        registry.updateExecutionWallet(executorAgentId, vm.addr(rotatedExecutionWalletPk), "");
+    }
+
+    function testCannotReuseProofHashAcrossCovenants() public {
+        bytes32 firstCovenantId = _createDefaultCovenant();
+        bytes32 secondCovenantId = _createDefaultCovenant();
+        bytes32 proofHash = keccak256("shared-proof");
+        bytes32 firstReceiptHead = keccak256("receipt-head-1");
+        bytes32 secondReceiptHead = keccak256("receipt-head-2");
+
+        vm.prank(outsider);
+        covenant.submitCompletion(
+            firstCovenantId,
+            proofHash,
+            firstReceiptHead,
+            _signCompletion(firstCovenantId, bytes32("task-1"), proofHash, firstReceiptHead, executionWalletPk)
+        );
+
+        vm.prank(outsider);
+        vm.expectRevert(Covenant.ProofAlreadyCommitted.selector);
+        covenant.submitCompletion(
+            secondCovenantId,
+            proofHash,
+            secondReceiptHead,
+            _signCompletion(secondCovenantId, bytes32("task-1"), proofHash, secondReceiptHead, executionWalletPk)
+        );
+    }
+
+    function testFinalizeRequiresAnchoredReceiptHead() public {
+        bytes32 covenantId = _createDefaultCovenant();
+        bytes32 proofHash = keccak256("proof");
+        bytes memory invalidSignature = _signCompletion(covenantId, bytes32("task-1"), proofHash, bytes32(0), executionWalletPk);
+
+        vm.prank(outsider);
+        vm.expectRevert(Covenant.InvalidReceiptHead.selector);
+        covenant.submitCompletion(covenantId, proofHash, bytes32(0), invalidSignature);
     }
 
     function testOnlyArbiterCanResolveDispute() public {
         bytes32 covenantId = _createDefaultCovenant();
+        bytes32 proofHash = keccak256("proof");
+        bytes32 receiptHead = keccak256("receipt-head");
+        bytes memory operatorSignature = _signCompletion(covenantId, bytes32("task-1"), proofHash, receiptHead, executionWalletPk);
+
+        vm.prank(outsider);
+        covenant.submitCompletion(covenantId, proofHash, receiptHead, operatorSignature);
 
         vm.prank(creator);
         covenant.disputeCovenant(covenantId, keccak256("evidence"));
@@ -228,18 +376,29 @@ contract CovenantTest is Test {
 
     function testCannotDisputeAfterWindowCloses() public {
         bytes32 covenantId = _createDefaultCovenant();
+        bytes32 proofHash = keccak256("proof");
+        bytes32 receiptHead = keccak256("receipt-head");
+        bytes memory operatorSignature = _signCompletion(covenantId, bytes32("task-1"), proofHash, receiptHead, executionWalletPk);
 
-        vm.prank(executorOwner);
-        covenant.submitCompletion(covenantId, keccak256("proof"));
+        vm.prank(outsider);
+        covenant.submitCompletion(covenantId, proofHash, receiptHead, operatorSignature);
 
         vm.warp(block.timestamp + 7 days);
 
         vm.prank(creator);
-        vm.expectRevert("Dispute window closed");
+        vm.expectRevert(Covenant.DisputeWindowClosed.selector);
         covenant.disputeCovenant(covenantId, keccak256("evidence"));
     }
 
-    function _createDefaultCovenant() internal returns (bytes32 covenantId) {
+    function testCannotDisputeBeforeSubmission() public {
+        bytes32 covenantId = _createDefaultCovenant();
+
+        vm.prank(creator);
+        vm.expectRevert(Covenant.NotSubmitted.selector);
+        covenant.disputeCovenant(covenantId, keccak256("evidence"));
+    }
+
+    function _proposeDefaultCovenant() internal returns (bytes32 covenantId) {
         vm.startPrank(creator);
         paymentToken.approve(address(covenant), type(uint256).max);
         covenantId = covenant.createCovenant(
@@ -252,8 +411,64 @@ contract CovenantTest is Test {
         vm.stopPrank();
     }
 
+    function _createDefaultCovenant() internal returns (bytes32 covenantId) {
+        covenantId = _proposeDefaultCovenant();
+        vm.prank(executionWallet);
+        covenant.acceptCovenant(covenantId);
+    }
+
     function _statusOf(bytes32 covenantId) internal view returns (ICovenant.CovenantStatus) {
         (ICovenant.CovenantStatus status,,,,,,,) = covenant.covenants(covenantId);
         return status;
+    }
+
+    function _signCompletion(
+        bytes32 covenantId,
+        bytes32 taskHash,
+        bytes32 proofHash,
+        bytes32 receiptHead,
+        uint256 signerKey
+    ) internal view returns (bytes memory signature) {
+        bytes32 structHash =
+            keccak256(abi.encode(SUBMIT_COMPLETION_TYPEHASH, covenantId, taskHash, proofHash, receiptHead));
+        bytes32 digest = MessageHashUtils.toTypedDataHash(_domainSeparator(), structHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _domainSeparator() internal view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes("TrustCommitCovenant")),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(covenant)
+            )
+        );
+    }
+
+    function _signExecutionWalletAcceptance(
+        uint256 agentId,
+        address newWallet,
+        uint256 signerKey
+    ) internal view returns (bytes memory signature) {
+        bytes32 structHash =
+            keccak256(abi.encode(ACCEPT_EXECUTION_ROLE_TYPEHASH, agentId, newWallet, registry.executionWalletNonce(agentId)));
+        bytes32 digest = MessageHashUtils.toTypedDataHash(_registryDomainSeparator(), structHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _registryDomainSeparator() internal view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes("TrustCommitRegistry")),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(registry)
+            )
+        );
     }
 }

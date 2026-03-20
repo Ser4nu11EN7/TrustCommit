@@ -134,6 +134,7 @@ test("ai arbiter returns a structured accountable decision", async () => {
       },
       receiptSnapshot: {
         createTxHash: null,
+        acceptTxHash: null,
         submitTxHash: null,
         finalizeTxHash: null,
         disputeTxHash: "0x9999999999999999999999999999999999999999999999999999999999999999",
@@ -215,6 +216,7 @@ test("ai arbiter returns a structured accountable decision", async () => {
           proofBundlePath: "proof_bundle.json"
         },
         onchain: {
+          acceptTxHash: null,
           proofHash: task.proofHash!,
           artifactHash: "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
           submitTxHash: null,

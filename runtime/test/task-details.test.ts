@@ -147,6 +147,7 @@ test("task details loads dispute and resolution sidecars", async () => {
           proofBundlePath: path.join(taskDir, "proof_bundle.json")
         },
         onchain: {
+          acceptTxHash: "0x7676767676767676767676767676767676767676767676767676767676767676",
           proofHash: task.proofHash,
           artifactHash: "0xabababababababababababababababababababababababababababababababab",
           submitTxHash: "0x7777777777777777777777777777777777777777777777777777777777777777",
@@ -269,6 +270,7 @@ test("task details loads dispute and resolution sidecars", async () => {
         },
         receiptSnapshot: {
           createTxHash: "0x6666666666666666666666666666666666666666666666666666666666666666",
+          acceptTxHash: "0x7676767676767676767676767676767676767676767676767676767676767676",
           submitTxHash: "0x7777777777777777777777777777777777777777777777777777777777777777",
           finalizeTxHash: null,
           disputeTxHash: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -317,7 +319,8 @@ test("task details loads dispute and resolution sidecars", async () => {
   );
   const receiptEventFiles = [
     path.join("receipt_events", "001_createCovenant.json"),
-    path.join("receipt_events", "002_submitCompletion.json")
+    path.join("receipt_events", "002_acceptCovenant.json"),
+    path.join("receipt_events", "003_submitCompletion.json")
   ];
   fs.mkdirSync(path.join(taskDir, "receipt_events"), { recursive: true });
   fs.writeFileSync(
@@ -352,11 +355,36 @@ test("task details loads dispute and resolution sidecars", async () => {
         schemaVersion: "v1",
         taskId: task.id,
         sequence: 2,
+        event: "acceptCovenant",
+        actor: "executor",
+        txHash: "0x7676767676767676767676767676767676767676767676767676767676767676",
+        createdAt: Date.now(),
+        prevHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        snapshot: {
+          taskHash: task.taskHash,
+          covenantId: task.covenantId,
+          proofHash: task.proofHash
+        },
+        metadata: {},
+        attestation: null,
+        eventHash: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      null,
+      2
+    )
+  );
+  fs.writeFileSync(
+    path.join(taskDir, receiptEventFiles[2]),
+    JSON.stringify(
+      {
+        schemaVersion: "v1",
+        taskId: task.id,
+        sequence: 3,
         event: "submitCompletion",
         actor: "executor",
         txHash: "0x7777777777777777777777777777777777777777777777777777777777777777",
         createdAt: Date.now(),
-        prevHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        prevHash: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         snapshot: {
           taskHash: task.taskHash,
           covenantId: task.covenantId,
@@ -383,10 +411,11 @@ test("task details loads dispute and resolution sidecars", async () => {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         headHash: "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-        eventCount: 2,
+        eventCount: 3,
         eventFiles: receiptEventFiles,
         receipts: {
           createTxHash: "0x6666666666666666666666666666666666666666666666666666666666666666",
+          acceptTxHash: "0x7676767676767676767676767676767676767676767676767676767676767676",
           submitTxHash: "0x7777777777777777777777777777777777777777777777777777777777777777",
           finalizeTxHash: null,
           disputeTxHash: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -403,7 +432,7 @@ test("task details loads dispute and resolution sidecars", async () => {
   assert.ok(details);
   assert.equal(details?.proofBundle?.proofHash, task.proofHash);
   assert.equal(details?.receiptRecord?.receipts.submitTxHash, "0x7777777777777777777777777777777777777777777777777777777777777777");
-  assert.equal(details?.receiptEvents.length, 2);
+  assert.equal(details?.receiptEvents.length, 3);
   assert.equal(details?.disputeRecord?.reason, "Creator requested review.");
   assert.equal(details?.disputeEvidence?.artifactSnapshot.summary, "Receipt trail is present.");
   assert.equal(details?.disputeEvidence?.evidencePacks.length, 1);

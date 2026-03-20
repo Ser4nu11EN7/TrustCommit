@@ -35,11 +35,17 @@ export class ExecutorAgent {
     logPath: string;
   }> {
     const startedAt = Date.now();
-    const evidence = buildWorkspaceEvidence(task, this.workspaceRoot);
+    const taskDir = path.join(this.artifactDir, task.id);
+    const evidenceSnapshotDir = path.join(taskDir, "evidence_snapshots");
+    fs.mkdirSync(taskDir, { recursive: true });
+    const evidence = buildWorkspaceEvidence(task, this.workspaceRoot, evidenceSnapshotDir);
+    const evidencePolicy = parseEvidencePolicy(task.evidencePolicyJson);
     const baseRepoContext = {
       workspaceRoot: evidence.workspaceRoot,
       fileCount: evidence.fileCount,
       topFiles: evidence.topFiles,
+      commitmentProfile: task.commitmentProfile ?? null,
+      evidencePolicy,
       inspectedFiles: evidence.files.map((file) => ({
         path: file.path,
         contentHash: file.contentHash,
@@ -130,11 +136,12 @@ export class ExecutorAgent {
       );
     }
 
-    const taskDir = path.join(this.artifactDir, task.id);
-    fs.mkdirSync(taskDir, { recursive: true });
     artifactPath = path.join(taskDir, "artifact.json");
     const logPath = path.join(taskDir, "agent_log.json");
     const proofBundlePath = path.join(taskDir, "proof_bundle.json");
+    const artifactFileRef = path.basename(artifactPath);
+    const logFileRef = path.basename(logPath);
+    const proofBundleFileRef = path.basename(proofBundlePath);
     const artifactHash = hashJson(artifact);
     const budget = {
       policy: [
@@ -191,7 +198,9 @@ export class ExecutorAgent {
         instructions: task.instructions,
         outputSchema,
         covenantId: task.covenantId,
-        taskHash: task.taskHash
+        taskHash: task.taskHash,
+        commitmentProfile: task.commitmentProfile ?? null,
+        evidencePolicy
       },
       evidence,
       plan,
@@ -208,11 +217,12 @@ export class ExecutorAgent {
           covenantId: task.covenantId
         },
         executionArtifacts: {
-          artifactPath,
-          logPath,
-          proofBundlePath
+          artifactPath: artifactFileRef,
+          logPath: logFileRef,
+          proofBundlePath: proofBundleFileRef
         },
         onchain: {
+          acceptTxHash: null,
           proofHash,
           artifactHash,
           submitTxHash: null,
@@ -221,7 +231,7 @@ export class ExecutorAgent {
           resolveTxHash: null
         }
       },
-      artifactPath,
+      artifactPath: artifactFileRef,
       proofHash,
       steps: [
         {
@@ -458,8 +468,8 @@ function buildProofBundleRecord(input: {
     executionTrace,
     executionTraceHash: hashJson(executionTrace),
     validatorResultsHash: hashJson(input.verification.validatorResults),
-    artifactPath: input.artifactPath,
-    agentLogPath: input.logPath,
+    artifactPath: path.basename(input.artifactPath),
+    agentLogPath: path.basename(input.logPath),
     createdAt
   };
   const proofHash = hashJson(bundleBase);
@@ -468,4 +478,28 @@ function buildProofBundleRecord(input: {
     operatorAttestation: null,
     proofHash
   };
+}
+
+function parseEvidencePolicy(value: string | null | undefined): AgentLog["task"]["evidencePolicy"] {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as Partial<NonNullable<AgentLog["task"]["evidencePolicy"]>>;
+    const requiredPaths = Array.isArray(parsed.requiredPaths)
+      ? [...new Set(parsed.requiredPaths.filter((entry): entry is string => typeof entry === "string" && !!entry.trim()).map((entry) => entry.trim()))]
+      : [];
+    const rationale = Array.isArray(parsed.rationale)
+      ? [...new Set(parsed.rationale.filter((entry): entry is string => typeof entry === "string" && !!entry.trim()).map((entry) => entry.trim()))]
+      : [];
+
+    if (requiredPaths.length === 0 && rationale.length === 0) {
+      return null;
+    }
+
+    return { requiredPaths, rationale };
+  } catch {
+    return null;
+  }
 }

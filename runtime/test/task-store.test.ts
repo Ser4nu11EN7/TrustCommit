@@ -23,6 +23,11 @@ test("task store saves and loads task records", () => {
     covenantId: null,
     executorAgentId: 1,
     createdBy: "mock",
+    commitmentProfile: "procurement_commitment",
+    evidencePolicyJson: JSON.stringify({
+      requiredPaths: ["demo-fixtures/procurement-brief.md"],
+      rationale: ["Preserve the procurement brief."]
+    }),
     proofHash: null,
     taskHash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
     artifactPath: null,
@@ -33,6 +38,8 @@ test("task store saves and loads task records", () => {
   const loaded = store.getTask(task.id);
   assert.ok(loaded);
   assert.equal(loaded?.title, task.title);
+  assert.equal(loaded?.commitmentProfile, task.commitmentProfile);
+  assert.equal(loaded?.evidencePolicyJson, task.evidencePolicyJson);
 });
 
 test("task store persists run log metadata", () => {

@@ -94,13 +94,54 @@ export class MockProvider implements ModelProvider {
         selectedValue = "Vendor A";
         continue;
       }
-      if (key.toLowerCase().includes("selectedoption") || key.toLowerCase().includes("selectedplan")) {
+      if (key.toLowerCase().includes("selectedplan")) {
+        payload[key] = "Patch Plan A";
+        selectedValue = "Patch Plan A";
+        continue;
+      }
+      if (key.toLowerCase().includes("selectedrequest")) {
+        payload[key] = "Access Request A";
+        selectedValue = "Access Request A";
+        continue;
+      }
+      if (key.toLowerCase().includes("selectedoption")) {
         payload[key] = "Primary Option";
         selectedValue = String(payload[key]);
         continue;
       }
+      if (key.toLowerCase().includes("remediationplan")) {
+        payload[key] =
+          "Apply Patch Plan A to the checkout and payments flows, preserve audit logging, add regression tests, and avoid touching sensitive auth code.";
+        continue;
+      }
+      if (key.toLowerCase().includes("filestomodify") || key.toLowerCase().includes("touchedfiles")) {
+        payload[key] = ["src/checkout.ts", "src/payments.ts"];
+        continue;
+      }
+      if (key.toLowerCase().includes("acceptance")) {
+        payload[key] = ["Input sanitization enforced", "Audit logging preserved", "Targeted unit tests added"];
+        continue;
+      }
+      if (key.toLowerCase().includes("residualrisk")) {
+        payload[key] = "Low residual risk after preserving audit logging and constraining the patch to checkout-related files.";
+        continue;
+      }
       if (key.toLowerCase().includes("budget")) {
         payload[key] = "Selected vendor remains within the stated budget ceiling.";
+        continue;
+      }
+      if (key.toLowerCase().includes("policy")) {
+        payload[key] = [
+          "EU region only",
+          "Read-only access",
+          "No biometric data",
+          "Ticket reference present",
+          "Maximum duration under 30 days"
+        ];
+        continue;
+      }
+      if (key.toLowerCase().includes("requiredcontrol")) {
+        payload[key] = ["Read-only access", "Ticket reference", "Maximum duration"];
         continue;
       }
       if (key.toLowerCase().includes("compliance") || key.toLowerCase().includes("check")) {

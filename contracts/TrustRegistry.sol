@@ -8,25 +8,40 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "./interfaces/ITrustRegistry.sol";
 
 contract TrustRegistry is ERC721URIStorage, AccessControl, ReentrancyGuard, Pausable, ITrustRegistry {
     using SafeERC20 for IERC20;
 
+    error InvalidExecutionWalletProof();
+
     bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
     bytes32 public constant COVENANT_ROLE = keccak256("COVENANT_ROLE");
+    bytes32 internal constant EIP712_DOMAIN_TYPEHASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    bytes32 internal constant NAME_HASH = keccak256("TrustCommitRegistry");
+    bytes32 internal constant VERSION_HASH = keccak256("1");
+    bytes32 internal constant ACCEPT_EXECUTION_ROLE_TYPEHASH =
+        keccak256("AcceptExecutionRole(uint256 agentId,address newWallet,uint256 nonce)");
 
     IERC20 public immutable stakeToken;
+    bytes32 private immutable _domainSeparator;
     uint256 private _nextAgentId = 1;
 
     mapping(uint256 => AgentState) public agents;
     mapping(uint256 => uint128) public stakeBalance;
     mapping(uint256 => uint128) public lockedTotal;
     mapping(uint256 => mapping(bytes32 => uint128)) public locks;
+    mapping(uint256 => uint256) public executionWalletNonce;
 
     constructor(address _stakeToken) ERC721("TrustCommit Agent", "TCAGENT") {
         require(_stakeToken != address(0), "Invalid token");
         stakeToken = IERC20(_stakeToken);
+        _domainSeparator = keccak256(
+            abi.encode(EIP712_DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, address(this))
+        );
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -122,7 +137,7 @@ contract TrustRegistry is ERC721URIStorage, AccessControl, ReentrancyGuard, Paus
         bytes32 covenantId,
         uint128 amount,
         address receiver,
-        bytes32
+        bytes32 reasonHash
     ) external onlyRole(COVENANT_ROLE) nonReentrant whenNotPaused {
         require(receiver != address(0), "Invalid receiver");
         require(amount > 0, "Amount must be > 0");
@@ -143,7 +158,7 @@ contract TrustRegistry is ERC721URIStorage, AccessControl, ReentrancyGuard, Paus
 
         stakeToken.safeTransfer(receiver, amount);
 
-        emit StakeSlashed(agentId, covenantId, amount, receiver);
+        emit StakeSlashed(agentId, covenantId, amount, receiver, reasonHash);
     }
 
     function commitReputation(uint256 agentId, uint16 newScoreBps, bytes32 evidenceRoot)
@@ -160,16 +175,28 @@ contract TrustRegistry is ERC721URIStorage, AccessControl, ReentrancyGuard, Paus
         emit ReputationUpdated(agentId, newScoreBps, evidenceRoot);
     }
 
-    function updateExecutionWallet(uint256 agentId, address newWallet, bytes calldata)
+    function updateExecutionWallet(uint256 agentId, address newWallet, bytes calldata proof)
         external
         whenNotPaused
     {
         require(ownerOf(agentId) == msg.sender, "Not owner");
         require(newWallet != address(0), "Invalid address");
 
+        uint256 nonce = executionWalletNonce[agentId];
+        bytes32 structHash = keccak256(abi.encode(
+            ACCEPT_EXECUTION_ROLE_TYPEHASH,
+            agentId,
+            newWallet,
+            nonce
+        ));
+        bytes32 digest = MessageHashUtils.toTypedDataHash(_domainSeparator, structHash);
+        address recovered = ECDSA.recover(digest, proof);
+        if (recovered != newWallet) revert InvalidExecutionWalletProof();
+
         address oldWallet = agents[agentId].executionWallet;
         agents[agentId].executionWallet = newWallet;
         agents[agentId].updatedAt = uint64(block.timestamp);
+        executionWalletNonce[agentId] = nonce + 1;
 
         emit ExecutionWalletUpdated(agentId, oldWallet, newWallet);
     }

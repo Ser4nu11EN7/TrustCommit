@@ -6,11 +6,17 @@ import {
   decodeEventLog,
   http,
   keccak256,
-  stringToHex,
   toBytes
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import type { AccountConfig, RuntimeConfig, SignatureRecord, TaskRecord } from "../core/types.js";
+import type {
+  AccountConfig,
+  OnchainAgentAuthority,
+  OnchainSubmissionBinding,
+  RuntimeConfig,
+  SignatureRecord,
+  TaskRecord
+} from "../core/types.js";
 import { loadContractArtifact } from "./artifacts.js";
 
 const COVENANT_ROLE = keccak256(toBytes("COVENANT_ROLE"));
@@ -26,8 +32,14 @@ const DEFAULT_ANVIL_ACCOUNTS = {
   creator: {
     address: "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc"
   },
+  executorOwner: {
+    address: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65"
+  },
+  executionWallet: {
+    address: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
+  },
   executor: {
-    address: "0x90f79bf6eb2c4f870365e785982e1f101e93b906"
+    address: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
   }
 } satisfies Record<string, AccountConfig>;
 
@@ -45,8 +57,28 @@ function getWalletClient(config: RuntimeConfig, account: AccountConfig) {
 }
 
 function ensureAccounts(config: RuntimeConfig): Required<RuntimeConfig>["accounts"] {
-  return config.accounts ?? DEFAULT_ANVIL_ACCOUNTS;
+  const overrides = Object.fromEntries(
+    Object.entries(config.accounts ?? {}).filter(([, value]) => value !== undefined)
+  ) as Partial<Required<RuntimeConfig>["accounts"]>;
+  const merged = {
+    ...DEFAULT_ANVIL_ACCOUNTS,
+    ...overrides
+  };
+  return {
+    ...merged,
+    executor: merged.executionWallet ?? merged.executor
+  };
 }
+
+function executorOwnerAccount(accounts: Required<RuntimeConfig>["accounts"]): AccountConfig {
+  return accounts.executorOwner ?? accounts.executor;
+}
+
+function executionWalletAccount(accounts: Required<RuntimeConfig>["accounts"]): AccountConfig {
+  return accounts.executionWallet ?? accounts.executor;
+}
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
 export class ChainAdapter {
   public constructor(private config: RuntimeConfig) {}
@@ -102,6 +134,18 @@ export class ChainAdapter {
     const covenantReceipt = await client.waitForTransactionReceipt({ hash: covenantHash });
     const covenant = covenantReceipt.contractAddress as `0x${string}`;
 
+    // Use the freshly deployed stack for any bootstrap helper that reads configured addresses.
+    this.setConfig({
+      ...this.config,
+      chainId,
+      accounts,
+      addresses: {
+        token,
+        trustRegistry,
+        covenant
+      }
+    });
+
     await this.writeContractAndConfirm(deployerClient, {
       address: trustRegistry,
       abi: registryArtifact.abi as readonly unknown[],
@@ -110,9 +154,11 @@ export class ChainAdapter {
     });
 
     const creatorClient = getWalletClient(this.config, accounts.creator);
-    const executorClient = getWalletClient(this.config, accounts.executor);
+    const executorOwner = executorOwnerAccount(accounts);
+    const executionWallet = executionWalletAccount(accounts);
+    const executorOwnerClient = getWalletClient(this.config, executorOwner);
 
-    for (const recipient of [accounts.creator.address, accounts.executor.address]) {
+    for (const recipient of [accounts.creator.address, executorOwner.address]) {
       await this.writeContractAndConfirm(deployerClient, {
         address: token,
         abi: mockArtifact.abi as readonly unknown[],
@@ -122,24 +168,33 @@ export class ChainAdapter {
     }
 
     const profileHash = keccak256(toBytes("demo-executor"));
-    await this.writeContractAndConfirm(executorClient, {
+    await this.writeContractAndConfirm(executorOwnerClient, {
       address: trustRegistry,
       abi: registryArtifact.abi as readonly unknown[],
       functionName: "registerAgent",
-      args: [accounts.executor.address, "ipfs://demo-executor", profileHash]
+      args: [executorOwner.address, "ipfs://demo-executor", profileHash]
     });
-    await this.writeContractAndConfirm(executorClient, {
+    await this.writeContractAndConfirm(executorOwnerClient, {
       address: token,
       abi: mockArtifact.abi as readonly unknown[],
       functionName: "approve",
       args: [trustRegistry, 1_000_000_000n]
     });
-    await this.writeContractAndConfirm(executorClient, {
+    await this.writeContractAndConfirm(executorOwnerClient, {
       address: trustRegistry,
       abi: registryArtifact.abi as readonly unknown[],
       functionName: "stake",
       args: [1n, 1_000_000_000n]
     });
+    if (executionWallet.address.toLowerCase() !== executorOwner.address.toLowerCase()) {
+      const rotationProof = await this.signExecutionWalletAcceptance(1, executionWallet.address);
+      await this.writeContractAndConfirm(executorOwnerClient, {
+        address: trustRegistry,
+        abi: registryArtifact.abi as readonly unknown[],
+        functionName: "updateExecutionWallet",
+        args: [1n, executionWallet.address, rotationProof]
+      });
+    }
 
     return {
       ...this.config,
@@ -194,10 +249,31 @@ export class ChainAdapter {
     };
   }
 
-  public async submitCompletion(task: TaskRecord): Promise<`0x${string}`> {
+  public async acceptCovenant(covenantId: `0x${string}`): Promise<`0x${string}`> {
     const accounts = ensureAccounts(this.config);
-    await this.assertWritableAccount(accounts.executor);
-    const executor = getWalletClient(this.config, accounts.executor);
+    const executionWallet = executionWalletAccount(accounts);
+    await this.assertWritableAccount(executionWallet);
+    const executor = getWalletClient(this.config, executionWallet);
+    const addresses = this.requireAddresses();
+    const covenantArtifact = loadContractArtifact(this.config.workspaceRoot, path.join("Covenant.sol", "Covenant.json"));
+
+    return this.writeContractAndConfirm(executor, {
+      address: addresses.covenant,
+      abi: covenantArtifact.abi as readonly unknown[],
+      functionName: "acceptCovenant",
+      args: [covenantId]
+    });
+  }
+
+  public async submitCompletion(
+    task: TaskRecord,
+    receiptHead: `0x${string}`,
+    operatorSignature: `0x${string}`
+  ): Promise<`0x${string}`> {
+    const accounts = ensureAccounts(this.config);
+    const executionWallet = executionWalletAccount(accounts);
+    await this.assertWritableAccount(executionWallet);
+    const executor = getWalletClient(this.config, executionWallet);
     const addresses = this.requireAddresses();
     const covenantArtifact = loadContractArtifact(this.config.workspaceRoot, path.join("Covenant.sol", "Covenant.json"));
 
@@ -205,7 +281,7 @@ export class ChainAdapter {
       address: addresses.covenant,
       abi: covenantArtifact.abi as readonly unknown[],
       functionName: "submitCompletion",
-      args: [task.covenantId, task.proofHash]
+      args: [task.covenantId, task.proofHash, receiptHead, operatorSignature]
     });
     return txHash;
   }
@@ -275,13 +351,72 @@ export class ChainAdapter {
     const client = getClient(this.config);
     const addresses = this.requireAddresses();
     const accounts = ensureAccounts(this.config);
+    const executorOwner = executorOwnerAccount(accounts);
     const tokenArtifact = loadContractArtifact(this.config.workspaceRoot, path.join("MockERC20.sol", "MockERC20.json"));
     return client.readContract({
       address: addresses.token,
       abi: tokenArtifact.abi as readonly unknown[],
       functionName: "balanceOf",
-      args: [accounts.executor.address]
+      args: [executorOwner.address]
     }) as Promise<bigint>;
+  }
+
+  public async getSubmissionBinding(covenantId: `0x${string}`): Promise<OnchainSubmissionBinding> {
+    const addresses = this.requireAddresses();
+    const client = getClient(this.config);
+    const covenantArtifact = loadContractArtifact(this.config.workspaceRoot, path.join("Covenant.sol", "Covenant.json"));
+    const [proofHash, receiptHead, signer] = await Promise.all([
+      client.readContract({
+        address: addresses.covenant,
+        abi: covenantArtifact.abi as readonly unknown[],
+        functionName: "completionProof",
+        args: [covenantId]
+      }) as Promise<`0x${string}`>,
+      client.readContract({
+        address: addresses.covenant,
+        abi: covenantArtifact.abi as readonly unknown[],
+        functionName: "completionReceiptHead",
+        args: [covenantId]
+      }) as Promise<`0x${string}`>,
+      client.readContract({
+        address: addresses.covenant,
+        abi: covenantArtifact.abi as readonly unknown[],
+        functionName: "completionSigner",
+        args: [covenantId]
+      }) as Promise<`0x${string}`>
+    ]);
+
+    return {
+      proofHash: proofHash === "0x0000000000000000000000000000000000000000000000000000000000000000" ? null : proofHash,
+      receiptHead: receiptHead === "0x0000000000000000000000000000000000000000000000000000000000000000" ? null : receiptHead,
+      signer: signer === "0x0000000000000000000000000000000000000000" ? null : signer
+    };
+  }
+
+  public async getAgentAuthority(agentId: number): Promise<OnchainAgentAuthority> {
+    const addresses = this.requireAddresses();
+    const client = getClient(this.config);
+    const registryArtifact = loadContractArtifact(this.config.workspaceRoot, path.join("TrustRegistry.sol", "TrustRegistry.json"));
+    const [owner, agentState] = await Promise.all([
+      client.readContract({
+        address: addresses.trustRegistry,
+        abi: registryArtifact.abi as readonly unknown[],
+        functionName: "ownerOf",
+        args: [BigInt(agentId)]
+      }) as Promise<`0x${string}`>,
+      client.readContract({
+        address: addresses.trustRegistry,
+        abi: registryArtifact.abi as readonly unknown[],
+        functionName: "getAgentState",
+        args: [BigInt(agentId)]
+      }) as Promise<{ executionWallet: `0x${string}` }>
+    ]);
+
+    return {
+      owner: owner === "0x0000000000000000000000000000000000000000" ? null : owner,
+      executionWallet:
+        agentState.executionWallet === "0x0000000000000000000000000000000000000000" ? null : agentState.executionWallet
+    };
   }
 
   public async getCurrentTimestamp(): Promise<number> {
@@ -294,28 +429,127 @@ export class ChainAdapter {
     role: "deployer" | "creator" | "executor" | "arbiter",
     purpose: string,
     payloadHash: `0x${string}`
-  ): Promise<SignatureRecord | null> {
+  ): Promise<SignatureRecord> {
     const accounts = ensureAccounts(this.config);
-    const account = accounts[role];
-    try {
-      const walletClient = getWalletClient(this.config, account);
-      const statement = `TrustCommit:${purpose}:${payloadHash}`;
-      const signature = (await (walletClient as any).signMessage({
-        account: account.privateKey ? privateKeyToAccount(account.privateKey) : account.address,
-        message: { raw: stringToHex(statement) }
-      })) as `0x${string}`;
-      return {
-        signer: account.address,
-        signedAt: Date.now(),
-        scheme: "eip191",
+    const account =
+      role === "executor"
+        ? executionWalletAccount(accounts)
+        : role === "creator"
+          ? accounts.creator
+          : role === "arbiter"
+            ? accounts.arbiter
+            : accounts.deployer;
+    await this.assertWritableAccount(account);
+    const walletClient = getWalletClient(this.config, account);
+    const chainId = Number(await getClient(this.config).getChainId());
+    const domain = {
+      name: "TrustCommitAttestation",
+      version: "1",
+      chainId,
+      verifyingContract: this.config.addresses?.covenant ?? this.config.addresses?.trustRegistry ?? ZERO_ADDRESS
+    } as const;
+    const signature = (await (walletClient as any).signTypedData({
+      account: account.privateKey ? privateKeyToAccount(account.privateKey) : account.address,
+      domain,
+      types: {
+        TrustCommitAttestation: [
+          { name: "purpose", type: "string" },
+          { name: "payloadHash", type: "bytes32" }
+        ]
+      },
+      primaryType: "TrustCommitAttestation",
+      message: {
         purpose,
-        statement,
-        payloadHash,
-        signature
-      };
-    } catch (_error) {
-      return null;
-    }
+        payloadHash
+      }
+    })) as `0x${string}`;
+    return {
+      signer: account.address,
+      signedAt: Date.now(),
+      scheme: "eip712",
+      purpose,
+      payloadHash,
+      signature,
+      domain: {
+        ...domain,
+        primaryType: "TrustCommitAttestation"
+      }
+    };
+  }
+
+  public async signCompletionAttestation(
+    task: Pick<TaskRecord, "covenantId" | "taskHash" | "proofHash" | "executorAgentId">,
+    receiptHead: `0x${string}`
+  ): Promise<`0x${string}`> {
+    const accounts = ensureAccounts(this.config);
+    const executionWallet = executionWalletAccount(accounts);
+    await this.assertWritableAccount(executionWallet);
+    const walletClient = getWalletClient(this.config, executionWallet);
+    const chainId = Number(await getClient(this.config).getChainId());
+    const addresses = this.requireAddresses();
+    return (walletClient as any).signTypedData({
+      account: executionWallet.privateKey ? privateKeyToAccount(executionWallet.privateKey) : executionWallet.address,
+      domain: {
+        name: "TrustCommitCovenant",
+        version: "1",
+        chainId,
+        verifyingContract: addresses.covenant
+      },
+      types: {
+        SubmitCompletion: [
+          { name: "covenantId", type: "bytes32" },
+          { name: "taskHash", type: "bytes32" },
+          { name: "proofHash", type: "bytes32" },
+          { name: "receiptHead", type: "bytes32" }
+        ]
+      },
+      primaryType: "SubmitCompletion",
+      message: {
+        covenantId: task.covenantId,
+        taskHash: task.taskHash,
+        proofHash: task.proofHash,
+        receiptHead
+      }
+    }) as Promise<`0x${string}`>;
+  }
+
+  public async signExecutionWalletAcceptance(agentId: number, newWallet: `0x${string}`): Promise<`0x${string}`> {
+    const accounts = ensureAccounts(this.config);
+    const executionWallet = executionWalletAccount(accounts);
+    await this.assertWritableAccount(executionWallet);
+    const walletClient = getWalletClient(this.config, executionWallet);
+    const addresses = this.requireAddresses();
+    const client = getClient(this.config);
+    const chainId = Number(await client.getChainId());
+    const registryArtifact = loadContractArtifact(this.config.workspaceRoot, path.join("TrustRegistry.sol", "TrustRegistry.json"));
+    const nonce = await client.readContract({
+      address: addresses.trustRegistry,
+      abi: registryArtifact.abi as readonly unknown[],
+      functionName: "executionWalletNonce",
+      args: [BigInt(agentId)]
+    }) as bigint;
+    return (walletClient as any).signTypedData({
+      account: executionWallet.privateKey ? privateKeyToAccount(executionWallet.privateKey) : executionWallet.address,
+      domain: {
+        name: "TrustCommitRegistry",
+        version: "1",
+        chainId,
+        verifyingContract: addresses.trustRegistry
+      },
+      types: {
+        AcceptExecutionRole: [
+          { name: "agentId", type: "uint256" },
+          { name: "newWallet", type: "address" },
+          { name: "nonce", type: "uint256" }
+        ]
+      },
+      primaryType: "AcceptExecutionRole",
+      message: {
+        agentId: BigInt(agentId),
+        newWallet,
+        nonce
+      }
+    }) as Promise<`0x${string}`>;
   }
 
   private requireAddresses(): AddressConfig {

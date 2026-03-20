@@ -1,0 +1,9 @@
+{
+  "request": "Access Request B",
+  "region": "APAC",
+  "dataClasses": ["biometric", "logs"],
+  "readOnly": false,
+  "durationDays": 90,
+  "ticketRef": null,
+  "riskScore": 8
+}

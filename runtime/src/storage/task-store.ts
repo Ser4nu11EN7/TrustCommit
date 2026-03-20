@@ -16,6 +16,8 @@ function mapTask(row: Record<string, unknown>): TaskRecord {
     covenantId: (row.covenant_id as `0x${string}` | null) ?? null,
     executorAgentId: Number(row.executor_agent_id),
     createdBy: String(row.created_by),
+    commitmentProfile: (row.commitment_profile as string | null) ?? null,
+    evidencePolicyJson: (row.evidence_policy_json as string | null) ?? null,
     proofHash: (row.proof_hash as `0x${string}` | null) ?? null,
     taskHash: (row.task_hash as `0x${string}` | null) ?? null,
     artifactPath: (row.artifact_path as string | null) ?? null,
@@ -60,11 +62,11 @@ export class TaskStore {
       .prepare(`
         INSERT OR REPLACE INTO tasks (
           id, title, instructions, output_schema_json, reward, required_stake,
-          deadline_ts, status, covenant_id, executor_agent_id, created_by,
+          deadline_ts, status, covenant_id, executor_agent_id, created_by, commitment_profile, evidence_policy_json,
           proof_hash, task_hash, artifact_path, created_at, updated_at
         ) VALUES (
           @id, @title, @instructions, @outputSchemaJson, @reward, @requiredStake,
-          @deadlineTs, @status, @covenantId, @executorAgentId, @createdBy,
+          @deadlineTs, @status, @covenantId, @executorAgentId, @createdBy, @commitmentProfile, @evidencePolicyJson,
           @proofHash, @taskHash, @artifactPath, @createdAt, @updatedAt
         )
       `)

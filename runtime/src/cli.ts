@@ -77,6 +77,16 @@ program
   });
 
 program
+  .command("task:export")
+  .requiredOption("--id <id>")
+  .option("--out <out>", "Output directory for the portable bundle")
+  .action(async (options) => {
+    const runtime = new TrustCommitRuntime();
+    const result = await runtime.exportTaskBundle(options.id, options.out);
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+program
   .command("task:run")
   .requiredOption("--id <id>")
   .action(async (options) => {
@@ -168,6 +178,46 @@ program
   .action(async () => {
     const runtime = new TrustCommitRuntime();
     const result = await runtime.demoDisputeRun();
+    console.log(
+      JSON.stringify(
+        {
+          taskId: result.task.id,
+          covenantId: result.task.covenantId,
+          status: result.status,
+          executorBalance: result.executorBalance.toString()
+        },
+        null,
+        2
+      )
+    );
+  });
+
+program
+  .command("demo:remediation")
+  .description("Run the remediation-commitment happy-path demo on local Anvil")
+  .action(async () => {
+    const runtime = new TrustCommitRuntime();
+    const result = await runtime.demoRemediationRun();
+    console.log(
+      JSON.stringify(
+        {
+          taskId: result.task.id,
+          covenantId: result.task.covenantId,
+          status: result.status,
+          executorBalance: result.executorBalance.toString()
+        },
+        null,
+        2
+      )
+    );
+  });
+
+program
+  .command("demo:policy")
+  .description("Run the policy-commitment happy-path demo on local Anvil")
+  .action(async () => {
+    const runtime = new TrustCommitRuntime();
+    const result = await runtime.demoPolicyRun();
     console.log(
       JSON.stringify(
         {

@@ -33,6 +33,19 @@ MIN_REWARD=1000000
 BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
 ```
 
+Before you broadcast anything, run:
+
+```bash
+npm run preflight:public
+```
+
+This preflight reports the exact blockers for a public deployment, including:
+
+- missing RPC or deployer key
+- unfunded wallets
+- runtime accounts that still rely on Anvil unlocked-address mode
+- authority overlap between deployer, creator, executor owner, execution wallet, and arbiter
+
 Optional token variables:
 
 ```bash

@@ -173,6 +173,7 @@ async function makeTaskDetails(): Promise<TaskDetails> {
         proofBundlePath: ".trustcommit/artifacts/task_verify/proof_bundle.json"
       },
       onchain: {
+        acceptTxHash: "0x5656565656565656565656565656565656565656565656565656565656565656",
         proofHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         artifactHash: hashJson(artifact),
         submitTxHash: "0x6666666666666666666666666666666666666666666666666666666666666666",
@@ -244,13 +245,27 @@ async function makeTaskDetails(): Promise<TaskDetails> {
     },
     signer: CREATOR
   });
-  const submitEvent = await makeEvent({
+  const acceptEvent = await makeEvent({
     task,
     sequence: 2,
+    event: "acceptCovenant",
+    actor: "executor",
+    txHash: "0x5656565656565656565656565656565656565656565656565656565656565656",
+    prevHash: createEvent.eventHash,
+    snapshot: {
+      taskHash: task.taskHash,
+      covenantId: task.covenantId,
+      proofHash
+    },
+    signer: EXECUTOR
+  });
+  const submitEvent = await makeEvent({
+    task,
+    sequence: 3,
     event: "submitCompletion",
     actor: "executor",
     txHash: "0x6666666666666666666666666666666666666666666666666666666666666666",
-    prevHash: createEvent.eventHash,
+    prevHash: acceptEvent.eventHash,
     snapshot: {
       taskHash: task.taskHash,
       covenantId: task.covenantId,
@@ -260,7 +275,7 @@ async function makeTaskDetails(): Promise<TaskDetails> {
   });
   const finalizeEvent = await makeEvent({
     task,
-    sequence: 3,
+    sequence: 4,
     event: "finalizeCompletion",
     actor: "deployer",
     txHash: "0x7777777777777777777777777777777777777777777777777777777777777777",
@@ -273,24 +288,27 @@ async function makeTaskDetails(): Promise<TaskDetails> {
     signer: EXECUTOR
   });
 
-  const receiptEvents = [createEvent, submitEvent, finalizeEvent];
+  const receiptEvents = [createEvent, acceptEvent, submitEvent, finalizeEvent];
   const receiptRecord: ReceiptRecord = {
     schemaVersion: "v2",
     taskId: task.id,
     taskHash: task.taskHash,
     covenantId: task.covenantId,
     proofHash,
+    anchoredReceiptHead: submitEvent.eventHash,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     headHash: finalizeEvent.eventHash,
     eventCount: receiptEvents.length,
     eventFiles: [
       "receipt_events/001_createCovenant.json",
-      "receipt_events/002_submitCompletion.json",
-      "receipt_events/003_finalizeCompletion.json"
+      "receipt_events/002_acceptCovenant.json",
+      "receipt_events/003_submitCompletion.json",
+      "receipt_events/004_finalizeCompletion.json"
     ],
     receipts: {
       createTxHash: createEvent.txHash,
+      acceptTxHash: acceptEvent.txHash,
       submitTxHash: submitEvent.txHash,
       finalizeTxHash: finalizeEvent.txHash,
       disputeTxHash: null,
@@ -303,6 +321,7 @@ async function makeTaskDetails(): Promise<TaskDetails> {
     artifact,
     agentLog,
     proofBundle,
+    chainContext: null,
     receiptRecord,
     receiptEvents,
     disputeRecord: null,

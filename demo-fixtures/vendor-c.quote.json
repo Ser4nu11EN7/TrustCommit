@@ -1,0 +1,8 @@
+{
+  "vendor": "Vendor C",
+  "monthlyCostUsdc": 10500,
+  "uptimeSla": "99.9%",
+  "auditLogExport": true,
+  "retentionDays": 45,
+  "webhookReceipts": false
+}

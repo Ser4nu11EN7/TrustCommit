@@ -18,9 +18,11 @@ TrustCommit gives agents:
 - bundle-rooted `proof_bundle.json`
 - signed `proof_bundle.json` operator attestations
 - hash-chained `receipt_record.json` plus append-only signed receipt events
+- onchain settlement binding for `proofHash + receiptHead + execution-wallet signature`
 - structured `dispute_evidence.json` for contested settlements
 - typed evidence packs inside `dispute_evidence.json` so arbitration reviews fixed evidence strata
 - onchain proof submission and dispute resolution
+- portable exported bundles that preserve verifier-relevant hashes without leaking local machine paths
 
 ## Primary Demo Story
 
@@ -28,8 +30,10 @@ TrustCommit gives agents:
 2. an executor agent reviews a vendor brief and quote evidence, then produces a grounded decision
 3. the executor must pass verification before any proof can be submitted onchain
 4. the executor submits an onchain proof hash for the full proof bundle, not just `artifact.json`
-5. the runtime can independently recompute and verify the signed proof bundle plus receipt chain with `task:verify`
-6. if the decision is challenged, the system exports `dispute_evidence.json` and the arbiter resolves using the receipt trail
+5. the covenant only accepts submission when the execution wallet signs the exact `proofHash + receiptHead` binding that will settle onchain
+6. the runtime can independently recompute and verify the signed proof bundle plus receipt chain with `task:verify`
+7. if the decision is challenged, the system exports `dispute_evidence.json` and the arbiter resolves using the receipt trail
+8. the runtime can export a portable review bundle for judges and external verifiers with `task:export`
 
 ## Primary Tracks
 

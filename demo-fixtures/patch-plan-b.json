@@ -1,0 +1,9 @@
+{
+  "plan": "Patch Plan B",
+  "filesToModify": ["src/checkout.ts", "src/auth.ts"],
+  "preservesAuditLogging": false,
+  "addsUnitTests": false,
+  "sanitizesInputs": true,
+  "touchesSensitiveAuth": true,
+  "riskScore": 7
+}

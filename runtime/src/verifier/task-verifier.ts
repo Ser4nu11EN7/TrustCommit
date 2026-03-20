@@ -1,19 +1,23 @@
-import { recoverMessageAddress, stringToHex } from "viem";
+import fs from "node:fs";
+import path from "node:path";
+import { recoverMessageAddress, recoverTypedDataAddress, stringToHex } from "viem";
 import type {
   ArtifactEnvelope,
   ProofBundleRecord,
   ReceiptEventRecord,
   ReceiptRecord,
   SignatureRecord,
+  TaskChainContext,
   TaskDetails,
   TaskVerificationReport,
   VerificationCheckResult
 } from "../core/types.js";
-import { hashJson } from "../utils/hash.js";
+import { hashJson, hashText } from "../utils/hash.js";
+import { validateArtifact } from "../validators/profiles.js";
 
 export async function verifyTaskDetails(details: TaskDetails): Promise<TaskVerificationReport> {
   const checks: VerificationCheckResult[] = [];
-  const { task, artifact, agentLog, proofBundle, receiptRecord, receiptEvents, disputeRecord, resolutionRecord } = details;
+  const { task, artifact, agentLog, proofBundle, chainContext, receiptRecord, receiptEvents, disputeRecord, resolutionRecord } = details;
 
   if (!artifact) {
     checks.push(fail("artifact.present", "artifact.json is missing."));
@@ -25,6 +29,36 @@ export async function verifyTaskDetails(details: TaskDetails): Promise<TaskVerif
     checks.push(fail("agentLog.present", "agent_log.json is missing."));
   } else {
     checks.push(pass("agentLog.present", "agent_log.json is present."));
+    checks.push(
+      checkEqual(
+        "agentLog.task.commitmentProfile",
+        agentLog.task.commitmentProfile ?? null,
+        task.commitmentProfile ?? null,
+        "agent_log task commitmentProfile matched the task record."
+      )
+    );
+    checks.push(
+      checkEqual(
+        "agentLog.task.evidencePolicy",
+        JSON.stringify(normalizeEvidencePolicy(agentLog.task.evidencePolicy)),
+        JSON.stringify(normalizeEvidencePolicy(parseEvidencePolicy(task.evidencePolicyJson))),
+        "agent_log task evidencePolicy matched the task record."
+      )
+    );
+    const requiredEvidencePaths = parseEvidencePolicy(task.evidencePolicyJson)?.requiredPaths ?? [];
+    if (requiredEvidencePaths.length > 0) {
+      const missingRequiredPaths = requiredEvidencePaths.filter(
+        (requiredPath) => !agentLog.evidence.files.some((file) => file.path === requiredPath)
+      );
+      checks.push(
+        missingRequiredPaths.length === 0
+          ? pass("agentLog.evidencePolicy.requiredPaths", "All required evidence policy paths were preserved in the evidence set.")
+          : fail(
+              "agentLog.evidencePolicy.requiredPaths",
+              `Missing required evidence policy paths: ${missingRequiredPaths.join(", ")}.`
+            )
+      );
+    }
   }
 
   if (!proofBundle) {
@@ -48,6 +82,17 @@ export async function verifyTaskDetails(details: TaskDetails): Promise<TaskVerif
     }
 
     if (agentLog) {
+      const replayedVerification = replayVerificationFromSnapshots(task, artifact, agentLog);
+      if (replayedVerification) {
+        checks.push(
+          checkEqual(
+            "proofBundle.replayedVerification",
+            hashJson(replayedVerification),
+            hashJson(agentLog.verification),
+            "Replayed verification from preserved snapshots matched agent_log verification."
+          )
+        );
+      }
       checks.push(
         checkEqual(
           "proofBundle.verificationHash",
@@ -60,12 +105,7 @@ export async function verifyTaskDetails(details: TaskDetails): Promise<TaskVerif
         checkEqual(
           "proofBundle.evidenceRoot",
           proofBundle.evidenceRoot,
-          hashJson(
-            agentLog.evidence.files.map((file) => ({
-              path: file.path,
-              contentHash: file.contentHash
-            }))
-          ),
+          recomputeEvidenceRoot(agentLog),
           "proof bundle evidenceRoot matched inspected file hashes."
         )
       );
@@ -130,7 +170,12 @@ export async function verifyTaskDetails(details: TaskDetails): Promise<TaskVerif
         "proofBundle.operatorAttestation",
         proofBundle.operatorAttestation,
         "proof_bundle",
-        proofBundle.proofHash
+        proofBundle.proofHash,
+        {
+          expectedSigner: chainContext?.actors.executionWallet ?? null,
+          expectedChainId: chainContext?.chainId ?? null,
+          expectedVerifyingContract: chainContext?.addresses.covenant ?? chainContext?.addresses.trustRegistry ?? null
+        }
       )
     );
   }
@@ -213,7 +258,7 @@ export async function verifyTaskDetails(details: TaskDetails): Promise<TaskVerif
         `receipt event ${expectedSequence} covenantId snapshot matched the task.`
       )
     );
-    if (event.event !== "createCovenant") {
+    if (event.event !== "createCovenant" && event.event !== "acceptCovenant") {
       checks.push(
         checkEqual(
           `receiptEvent.${expectedSequence}.snapshot.proofHash`,
@@ -237,7 +282,12 @@ export async function verifyTaskDetails(details: TaskDetails): Promise<TaskVerif
         `receiptEvent.${expectedSequence}.attestation`,
         event.attestation,
         event.event,
-        recomputedEventHash
+        recomputedEventHash,
+        {
+          expectedSigner: expectedSignerForActor(event.actor, chainContext),
+          expectedChainId: chainContext?.chainId ?? null,
+          expectedVerifyingContract: chainContext?.addresses.covenant ?? chainContext?.addresses.trustRegistry ?? null
+        }
       )
     );
     previousHash = event.eventHash;
@@ -265,6 +315,7 @@ export async function verifyTaskDetails(details: TaskDetails): Promise<TaskVerif
   }
 
   if (agentLog && receiptRecord) {
+    checks.push(checkReceiptReference("agentLog.receiptChain.acceptTxHash", agentLog.receiptChain.onchain.acceptTxHash, receiptRecord.receipts.acceptTxHash));
     checks.push(checkReceiptReference("agentLog.receiptChain.submitTxHash", agentLog.receiptChain.onchain.submitTxHash, receiptRecord.receipts.submitTxHash));
     checks.push(checkReceiptReference("agentLog.receiptChain.finalizeTxHash", agentLog.receiptChain.onchain.finalizeTxHash, receiptRecord.receipts.finalizeTxHash));
     checks.push(checkReceiptReference("agentLog.receiptChain.disputeTxHash", agentLog.receiptChain.onchain.disputeTxHash, receiptRecord.receipts.disputeTxHash));
@@ -272,7 +323,13 @@ export async function verifyTaskDetails(details: TaskDetails): Promise<TaskVerif
   }
 
   if (task.status === "submitted" || task.status === "completed" || task.status === "slashed" || task.status === "disputed") {
+    const acceptTxHash = receiptRecord?.receipts.acceptTxHash ?? null;
     const submitTxHash = receiptRecord?.receipts.submitTxHash ?? null;
+    checks.push(
+      acceptTxHash
+        ? pass("taskLifecycle.acceptReceipt", "An accept receipt exists for a task that progressed past proposal.")
+        : fail("taskLifecycle.acceptReceipt", "Missing accept receipt for a task that progressed past proposal.")
+    );
     checks.push(
       submitTxHash ? pass("taskLifecycle.submitReceipt", "A submit receipt exists for a non-draft task.") : fail("taskLifecycle.submitReceipt", "Missing submit receipt for a task that progressed past creation.")
     );
@@ -350,6 +407,7 @@ function receiptEventBase(event: ReceiptEventRecord) {
 function deriveReceiptTxHashes(receiptEvents: ReceiptEventRecord[]): ReceiptRecord["receipts"] {
   return {
     createTxHash: findLastReceipt(receiptEvents, "createCovenant"),
+    acceptTxHash: findLastReceipt(receiptEvents, "acceptCovenant"),
     submitTxHash: findLastReceipt(receiptEvents, "submitCompletion"),
     finalizeTxHash: findLastReceipt(receiptEvents, "finalizeCompletion"),
     disputeTxHash: findLastReceipt(receiptEvents, "disputeCovenant"),
@@ -370,7 +428,12 @@ async function verifySignature(
   name: string,
   signature: SignatureRecord | null,
   expectedPurpose: string,
-  payloadHash: `0x${string}`
+  payloadHash: `0x${string}`,
+  expectations?: {
+    expectedSigner?: `0x${string}` | null;
+    expectedChainId?: number | null;
+    expectedVerifyingContract?: `0x${string}` | null;
+  }
 ): Promise<VerificationCheckResult> {
   if (!signature) {
     return fail(name, "Attestation was missing.");
@@ -384,18 +447,179 @@ async function verifySignature(
   if (signature.payloadHash !== payloadHash) {
     return fail(name, "Attestation payloadHash did not match the recomputed payload hash.");
   }
-  const expectedStatement = `TrustCommit:${expectedPurpose}:${payloadHash}`;
-  if (signature.statement !== expectedStatement) {
-    return fail(name, "Attestation statement did not match the TrustCommit signing convention.");
+  if (
+    expectations?.expectedSigner &&
+    signature.signer.toLowerCase() !== expectations.expectedSigner.toLowerCase()
+  ) {
+    return fail(name, `Attested signer ${signature.signer} did not match expected authority ${expectations.expectedSigner}.`);
   }
-  const recovered = await recoverMessageAddress({
-    message: { raw: stringToHex(signature.statement) },
-    signature: signature.signature
-  });
+  let recovered: `0x${string}`;
+  if (signature.scheme === "eip712") {
+    if (!signature.domain?.chainId || !signature.domain?.verifyingContract) {
+      return fail(name, "EIP-712 attestation domain was missing chainId or verifyingContract.");
+    }
+    if (
+      expectations?.expectedChainId !== undefined &&
+      expectations.expectedChainId !== null &&
+      signature.domain.chainId !== expectations.expectedChainId
+    ) {
+      return fail(name, `EIP-712 attestation chainId ${signature.domain.chainId} did not match expected chainId ${expectations.expectedChainId}.`);
+    }
+    if (
+      expectations?.expectedVerifyingContract &&
+      signature.domain.verifyingContract?.toLowerCase() !== expectations.expectedVerifyingContract.toLowerCase()
+    ) {
+      return fail(
+        name,
+        `EIP-712 attestation verifyingContract ${signature.domain.verifyingContract} did not match expected contract ${expectations.expectedVerifyingContract}.`
+      );
+    }
+    recovered = await recoverTypedDataAddress({
+      domain: {
+        name: signature.domain.name,
+        version: signature.domain.version,
+        chainId: signature.domain.chainId,
+        verifyingContract: signature.domain.verifyingContract
+      },
+      types: {
+        TrustCommitAttestation: [
+          { name: "purpose", type: "string" },
+          { name: "payloadHash", type: "bytes32" }
+        ]
+      },
+      primaryType: "TrustCommitAttestation",
+      message: {
+        purpose: signature.purpose,
+        payloadHash: signature.payloadHash
+      },
+      signature: signature.signature
+    });
+  } else {
+    const expectedStatement = `TrustCommit:${expectedPurpose}:${payloadHash}`;
+    if (signature.statement !== expectedStatement) {
+      return fail(name, "Attestation statement did not match the TrustCommit signing convention.");
+    }
+    recovered = await recoverMessageAddress({
+      message: { raw: stringToHex(signature.statement) },
+      signature: signature.signature
+    });
+  }
   if (recovered.toLowerCase() !== signature.signer.toLowerCase()) {
     return fail(name, `Recovered signer ${recovered} did not match the attested signer ${signature.signer}.`);
   }
   return pass(name, `Recovered signer ${recovered} matched the attested signature.`);
+}
+
+function recomputeEvidenceRoot(agentLog: TaskDetails["agentLog"]): `0x${string}` {
+  if (!agentLog) {
+    return hashJson([]);
+  }
+  const normalized = agentLog.evidence.files.map((file) => {
+    let contentHash = file.contentHash;
+    if (file.snapshotPath) {
+      const snapshotAbsolutePath = path.resolve(agentLog.evidence.workspaceRoot, file.snapshotPath);
+      if (fs.existsSync(snapshotAbsolutePath)) {
+        contentHash = hashText(fs.readFileSync(snapshotAbsolutePath, "utf8"));
+      }
+    }
+    return {
+      path: file.path,
+      contentHash
+    };
+  });
+  return hashJson(normalized);
+}
+
+function replayVerificationFromSnapshots(
+  task: TaskDetails["task"],
+  artifact: TaskDetails["artifact"],
+  agentLog: TaskDetails["agentLog"]
+): NonNullable<TaskDetails["agentLog"]>["verification"] | null {
+  if (!artifact || !agentLog) {
+    return null;
+  }
+  const snapshotRoot = findSnapshotWorkspaceRoot(agentLog);
+  if (!snapshotRoot) {
+    return null;
+  }
+  return validateArtifact({
+    task,
+    payload: artifact.payload,
+    outputSchema: agentLog.task.outputSchema,
+    evidenceFiles: agentLog.evidence.files,
+    plan: agentLog.plan,
+    workspaceRoot: snapshotRoot
+  });
+}
+
+function findSnapshotWorkspaceRoot(agentLog: TaskDetails["agentLog"]): string | null {
+  if (!agentLog) {
+    return null;
+  }
+  for (const file of agentLog.evidence.files) {
+    if (!file.snapshotPath) {
+      continue;
+    }
+    const snapshotAbsolutePath = path.resolve(agentLog.evidence.workspaceRoot, file.snapshotPath);
+    const marker = `${path.sep}evidence_snapshots${path.sep}`;
+    const markerIndex = snapshotAbsolutePath.lastIndexOf(marker);
+    if (markerIndex !== -1) {
+      return snapshotAbsolutePath.slice(0, markerIndex + marker.length - 1);
+    }
+  }
+  return null;
+}
+
+function expectedSignerForActor(actor: string, chainContext: TaskChainContext | null): `0x${string}` | null {
+  if (!chainContext) {
+    return null;
+  }
+  if (actor === "creator") {
+    return chainContext.actors.creator;
+  }
+  if (actor === "executor") {
+    return chainContext.actors.executionWallet;
+  }
+  if (actor === "arbiter") {
+    return chainContext.actors.arbiter;
+  }
+  if (actor === "deployer") {
+    return chainContext.actors.deployer;
+  }
+  return null;
+}
+
+function parseEvidencePolicy(value: string | null | undefined): {
+  requiredPaths: string[];
+  rationale: string[];
+} | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as { requiredPaths?: unknown; rationale?: unknown };
+    return normalizeEvidencePolicy({
+      requiredPaths: Array.isArray(parsed.requiredPaths)
+        ? parsed.requiredPaths.filter((entry): entry is string => typeof entry === "string")
+        : [],
+      rationale: Array.isArray(parsed.rationale)
+        ? parsed.rationale.filter((entry): entry is string => typeof entry === "string")
+        : []
+    });
+  } catch {
+    return null;
+  }
+}
+
+function normalizeEvidencePolicy(value: { requiredPaths: string[]; rationale: string[] } | null | undefined) {
+  if (!value) {
+    return null;
+  }
+  return {
+    requiredPaths: [...value.requiredPaths].sort(),
+    rationale: [...value.rationale].sort()
+  };
 }
 
 function checkEqual(name: string, actual: unknown, expected: unknown, successDetail: string): VerificationCheckResult {

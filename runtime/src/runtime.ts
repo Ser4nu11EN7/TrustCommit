@@ -17,6 +17,7 @@ import type {
   ReceiptRecord,
   ResolutionRecord,
   RuntimeConfig,
+  TaskChainContext,
   TaskVerificationReport,
   TaskDetails,
   TaskRecord,
@@ -32,6 +33,7 @@ import { ProviderRouter } from "./providers/router.js";
 import { hashJson } from "./utils/hash.js";
 import { buildAgentManifest, writeAgentManifest } from "./manifests/agent-manifest.js";
 import { verifyTaskDetails } from "./verifier/task-verifier.js";
+import { exportPortableTaskBundle } from "./exporters/task-bundle.js";
 
 const DISPUTE_RECORD_FILE = "dispute.json";
 const DISPUTE_EVIDENCE_FILE = "dispute_evidence.json";
@@ -40,6 +42,7 @@ const ARBITER_LOG_FILE = "arbiter_log.json";
 const PROOF_BUNDLE_FILE = "proof_bundle.json";
 const RECEIPT_RECORD_FILE = "receipt_record.json";
 const RECEIPT_EVENT_DIR = "receipt_events";
+const CHAIN_CONTEXT_FILE = "chain_context.json";
 
 export class TrustCommitRuntime {
   public config: RuntimeConfig;
@@ -62,7 +65,7 @@ export class TrustCommitRuntime {
     this.executor = new ExecutorAgent(this.providers, workspaceRoot, this.config.artifactDir);
     this.executor.setReceiptContext({
       trustRegistry: this.config.addresses?.trustRegistry ?? null,
-      operator: this.config.accounts?.executor?.address ?? null
+      operator: this.config.accounts?.executionWallet?.address ?? this.config.accounts?.executor?.address ?? null
     });
     this.aiArbiter = new AiArbiter(this.providers);
     this.arbiter = new ManualArbiter();
@@ -74,7 +77,7 @@ export class TrustCommitRuntime {
     writeAgentManifest(this.config, this.config.dataDir);
     this.executor.setReceiptContext({
       trustRegistry: this.config.addresses?.trustRegistry ?? null,
-      operator: this.config.accounts?.executor?.address ?? null
+      operator: this.config.accounts?.executionWallet?.address ?? this.config.accounts?.executor?.address ?? null
     });
   }
 
@@ -86,7 +89,7 @@ export class TrustCommitRuntime {
     writeAgentManifest(next, next.dataDir);
     this.executor.setReceiptContext({
       trustRegistry: next.addresses?.trustRegistry ?? null,
-      operator: next.accounts?.executor?.address ?? null
+      operator: next.accounts?.executionWallet?.address ?? next.accounts?.executor?.address ?? null
     });
     return next;
   }
@@ -119,6 +122,7 @@ export class TrustCommitRuntime {
     const resolutionRecord = this.readTaskJson<ResolutionRecord>(taskId, RESOLUTION_RECORD_FILE);
     const arbiterLog = this.readTaskJson<ArbiterReviewLog>(taskId, ARBITER_LOG_FILE);
     const proofBundle = this.readTaskJson<ProofBundleRecord>(taskId, PROOF_BUNDLE_FILE);
+    const chainContext = this.readTaskJson<TaskChainContext>(taskId, CHAIN_CONTEXT_FILE);
     const receiptRecord = this.readTaskJson<ReceiptRecord>(taskId, RECEIPT_RECORD_FILE);
     const receiptEvents = receiptRecord?.eventFiles
       ? receiptRecord.eventFiles
@@ -131,6 +135,7 @@ export class TrustCommitRuntime {
       artifact,
       agentLog,
       proofBundle,
+      chainContext,
       receiptRecord,
       receiptEvents,
       disputeRecord,
@@ -147,7 +152,130 @@ export class TrustCommitRuntime {
     if (!details) {
       throw new Error(`Task not found: ${taskId}`);
     }
-    return verifyTaskDetails(details);
+    const report = await verifyTaskDetails(details);
+    const chainContext = details.chainContext;
+    if (chainContext) {
+      const sameChain = chainContext.chainId === (this.config.chainId ?? null);
+      const sameRegistry = chainContext.addresses.trustRegistry === (this.config.addresses?.trustRegistry ?? null);
+      const sameCovenant = chainContext.addresses.covenant === (this.config.addresses?.covenant ?? null);
+      report.checks.push({
+        name: "verificationContext.chainId",
+        passed: sameChain,
+        severity: sameChain ? "warning" : "error",
+        detail: sameChain
+          ? "Verifier chainId matched the task's recorded chain context."
+          : `Task was recorded on chain ${chainContext.chainId ?? "unknown"} but verifier is using ${this.config.chainId ?? "unknown"}.`
+      });
+      report.checks.push({
+        name: "verificationContext.trustRegistry",
+        passed: sameRegistry,
+        severity: sameRegistry ? "warning" : "error",
+        detail: sameRegistry
+          ? "Verifier trustRegistry address matched the task's recorded chain context."
+          : `Task expects trustRegistry ${chainContext.addresses.trustRegistry ?? null} but verifier is using ${this.config.addresses?.trustRegistry ?? null}.`
+      });
+      report.checks.push({
+        name: "verificationContext.covenant",
+        passed: sameCovenant,
+        severity: sameCovenant ? "warning" : "error",
+        detail: sameCovenant
+          ? "Verifier covenant address matched the task's recorded chain context."
+          : `Task expects covenant ${chainContext.addresses.covenant ?? null} but verifier is using ${this.config.addresses?.covenant ?? null}.`
+      });
+    }
+    if (
+      details.task.covenantId &&
+      this.config.addresses?.covenant &&
+      (!chainContext ||
+        (chainContext.chainId === (this.config.chainId ?? null) &&
+          chainContext.addresses.trustRegistry === (this.config.addresses?.trustRegistry ?? null) &&
+          chainContext.addresses.covenant === (this.config.addresses?.covenant ?? null)))
+    ) {
+      const [binding, authority] = await Promise.all([
+        this.chain.getSubmissionBinding(details.task.covenantId),
+        this.chain.getAgentAuthority(details.task.executorAgentId)
+      ]);
+      report.checks.push({
+        name: "onchainBinding.proofHash",
+        passed: binding.proofHash === details.task.proofHash,
+        severity: binding.proofHash === details.task.proofHash ? "warning" : "error",
+        detail:
+          binding.proofHash === details.task.proofHash
+            ? "Onchain completionProof matched the task proofHash."
+            : `Expected onchain proofHash ${details.task.proofHash} but found ${binding.proofHash}.`
+      });
+      report.checks.push({
+        name: "onchainBinding.receiptHead",
+        passed: binding.receiptHead === (details.receiptRecord?.anchoredReceiptHead ?? null),
+        severity: binding.receiptHead === (details.receiptRecord?.anchoredReceiptHead ?? null) ? "warning" : "error",
+        detail:
+          binding.receiptHead === (details.receiptRecord?.anchoredReceiptHead ?? null)
+            ? "Onchain completionReceiptHead matched the anchored local receipt head."
+            : `Expected onchain receipt head ${details.receiptRecord?.anchoredReceiptHead ?? null} but found ${binding.receiptHead}.`
+      });
+      report.checks.push({
+        name: "onchainBinding.signer",
+        passed:
+          binding.signer?.toLowerCase() ===
+          (details.proofBundle?.operatorAttestation?.signer ?? null)?.toLowerCase(),
+        severity:
+          binding.signer?.toLowerCase() ===
+          (details.proofBundle?.operatorAttestation?.signer ?? null)?.toLowerCase()
+            ? "warning"
+            : "error",
+        detail:
+          binding.signer?.toLowerCase() ===
+          (details.proofBundle?.operatorAttestation?.signer ?? null)?.toLowerCase()
+            ? "Onchain completionSigner matched the proof bundle attestor."
+            : `Expected onchain signer ${details.proofBundle?.operatorAttestation?.signer ?? null} but found ${binding.signer}.`
+      });
+      report.checks.push({
+        name: "onchainAuthority.executionWallet",
+        passed:
+          authority.executionWallet?.toLowerCase() ===
+          (details.proofBundle?.operatorAttestation?.signer ?? null)?.toLowerCase(),
+        severity:
+          authority.executionWallet?.toLowerCase() ===
+          (details.proofBundle?.operatorAttestation?.signer ?? null)?.toLowerCase()
+            ? "warning"
+            : "error",
+        detail:
+          authority.executionWallet?.toLowerCase() ===
+          (details.proofBundle?.operatorAttestation?.signer ?? null)?.toLowerCase()
+            ? "Registry executionWallet matched the proof bundle attestor."
+            : `Expected registry execution wallet ${details.proofBundle?.operatorAttestation?.signer ?? null} but found ${authority.executionWallet}.`
+      });
+      report.checks.push({
+        name: "onchainAuthority.owner",
+        passed:
+          authority.owner !== null &&
+          (!chainContext?.actors.executorOwner ||
+            authority.owner.toLowerCase() === chainContext.actors.executorOwner.toLowerCase()),
+        severity:
+          authority.owner !== null &&
+          (!chainContext?.actors.executorOwner ||
+            authority.owner.toLowerCase() === chainContext.actors.executorOwner.toLowerCase())
+            ? "warning"
+            : "error",
+        detail:
+          authority.owner === null
+            ? "Registry owner for executor agent could not be resolved."
+            : chainContext?.actors.executorOwner &&
+                authority.owner.toLowerCase() !== chainContext.actors.executorOwner.toLowerCase()
+              ? `Expected registry owner ${chainContext.actors.executorOwner} but found ${authority.owner}.`
+              : `Registry owner for executor agent resolved to ${authority.owner}.`
+      });
+    }
+    const warnings = report.checks.filter((check) => !check.passed && check.severity === "warning").length;
+    const errors = report.checks.filter((check) => !check.passed && check.severity === "error").length;
+    report.summary = {
+      passed: report.checks.filter((check) => check.passed).length,
+      warnings,
+      errors,
+      total: report.checks.length
+    };
+    report.status = errors === 0 ? "verified" : "flagged";
+    return report;
   }
 
   public getAgentManifest(): AgentManifest {
@@ -176,6 +304,7 @@ export class TrustCommitRuntime {
     };
     this.store.saveTask(record);
     this.store.saveChainAction(record.id, "createCovenant", "creator", tx.txHash);
+    this.writeTaskChainContext(record.id);
     await this.appendReceiptEvent(record, {
       event: "createCovenant",
       actor: "creator",
@@ -183,6 +312,16 @@ export class TrustCommitRuntime {
       metadata: {
         reward: record.reward,
         requiredStake: record.requiredStake
+      }
+    });
+    const acceptTxHash = await this.chain.acceptCovenant(tx.covenantId);
+    this.store.saveChainAction(record.id, "acceptCovenant", "executor", acceptTxHash);
+    await this.appendReceiptEvent(record, {
+      event: "acceptCovenant",
+      actor: "executor",
+      txHash: acceptTxHash,
+      metadata: {
+        acceptedBy: this.config.accounts?.executionWallet?.address ?? this.config.accounts?.executor?.address ?? null
       }
     });
     return record;
@@ -200,16 +339,41 @@ export class TrustCommitRuntime {
       });
     }
     this.store.saveRun(output.run);
-    const txHash = await this.chain.submitCompletion({
-      ...task,
-      proofHash: output.proofHash
-    });
-    this.store.updateTaskStatus(taskId, "submitted", {
-      proofHash: output.proofHash,
-      artifactPath: output.artifactPath
-    });
-    this.store.saveChainAction(taskId, "submitCompletion", "executor", txHash);
-    await this.appendReceiptEvent(
+    const preparedReceipt = await this.appendReceiptEvent(
+      {
+        ...task,
+        proofHash: output.proofHash
+      },
+      {
+        event: "prepareSubmission",
+        actor: "executor",
+        txHash: null,
+        metadata: {
+          artifactPath: output.artifactPath,
+          proofBundlePath: output.proofBundlePath
+        }
+      }
+    );
+    const anchoredReceiptHead = preparedReceipt.headHash;
+    if (!anchoredReceiptHead) {
+      throw new Error(`Failed to derive anchored receipt head for task ${task.id}`);
+    }
+    const operatorSignature = await this.chain.signCompletionAttestation(
+      {
+        ...task,
+        proofHash: output.proofHash
+      },
+      anchoredReceiptHead
+    );
+    const txHash = await this.chain.submitCompletion(
+      {
+        ...task,
+        proofHash: output.proofHash
+      },
+      anchoredReceiptHead,
+      operatorSignature
+    );
+    const finalReceipt = await this.appendReceiptEvent(
       {
         ...task,
         proofHash: output.proofHash
@@ -220,10 +384,20 @@ export class TrustCommitRuntime {
         txHash,
         metadata: {
           artifactPath: output.artifactPath,
-          proofBundlePath: output.proofBundlePath
+          proofBundlePath: output.proofBundlePath,
+          anchoredReceiptHead
         }
       }
     );
+    this.writeTaskJson(task.id, RECEIPT_RECORD_FILE, {
+      ...finalReceipt,
+      anchoredReceiptHead
+    });
+    this.store.updateTaskStatus(taskId, "submitted", {
+      proofHash: output.proofHash,
+      artifactPath: output.artifactPath
+    });
+    this.store.saveChainAction(taskId, "submitCompletion", "executor", txHash);
     return this.requireTask(taskId);
   }
 
@@ -328,7 +502,20 @@ export class TrustCommitRuntime {
       },
       reward: 10_000_000,
       requiredStake: 500_000_000,
-      deadlineHours: 24
+      deadlineHours: 24,
+      commitmentProfile: "procurement_commitment",
+      evidencePolicy: {
+        requiredPaths: [
+          "demo-fixtures/procurement-brief.md",
+          "demo-fixtures/vendor-a.quote.json",
+          "demo-fixtures/vendor-b.quote.json",
+          "demo-fixtures/vendor-c.quote.json"
+        ],
+        rationale: [
+          "Vendor commitments must preserve the procurement brief.",
+          "All candidate quotes must remain reviewable during dispute resolution."
+        ]
+      }
     });
     await this.runTask(task.id);
     const finalized = await this.finalizeTask(task.id);
@@ -356,7 +543,20 @@ export class TrustCommitRuntime {
       },
       reward: 15_000_000,
       requiredStake: 500_000_000,
-      deadlineHours: 24
+      deadlineHours: 24,
+      commitmentProfile: "procurement_commitment",
+      evidencePolicy: {
+        requiredPaths: [
+          "demo-fixtures/procurement-brief.md",
+          "demo-fixtures/vendor-a.quote.json",
+          "demo-fixtures/vendor-b.quote.json",
+          "demo-fixtures/vendor-c.quote.json"
+        ],
+        rationale: [
+          "Disputed vendor decisions must preserve the procurement brief.",
+          "Each quoted vendor must stay inside the evidence set for later arbiter review."
+        ]
+      }
     });
     await this.runTask(task.id);
     await this.disputeTask(
@@ -367,6 +567,106 @@ export class TrustCommitRuntime {
     const status = await this.chain.getCovenantStatus(resolved.covenantId!);
     const executorBalance = await this.chain.getExecutorBalance();
     return { task: resolved, status, executorBalance };
+  }
+
+  public async demoRemediationRun(): Promise<{ task: TaskRecord; status: number; executorBalance: bigint }> {
+    await this.init();
+    await this.bootstrapDemo();
+    const task = await this.createTask({
+      title: "Select a compliant remediation plan for the checkout service",
+      instructions:
+        "Review the remediation brief and patch plan fixtures in demo-fixtures/. Choose the lowest-risk plan that fixes the checkout issue without touching sensitive auth flows, while preserving audit logging, adding tests, and enforcing input sanitization. Return a structured remediation commitment.",
+      outputSchema: {
+        taskTitle: "string",
+        selectedPlan: "string",
+        summary: "string",
+        remediationPlan: "string",
+        decisionReason: "string",
+        filesToModify: "string[]",
+        acceptanceChecks: "string[]",
+        residualRisk: "string",
+        inspectedFiles: "string[]",
+        notes: "string[]"
+      },
+      reward: 12_000_000,
+      requiredStake: 500_000_000,
+      deadlineHours: 24,
+      commitmentProfile: "remediation_commitment",
+      evidencePolicy: {
+        requiredPaths: [
+          "demo-fixtures/remediation-brief.md",
+          "demo-fixtures/patch-plan-a.json",
+          "demo-fixtures/patch-plan-b.json"
+        ],
+        rationale: [
+          "Remediation commitments must preserve the remediation brief.",
+          "Candidate patch plans must remain reviewable during verification and dispute resolution."
+        ]
+      }
+    });
+    await this.runTask(task.id);
+    const finalized = await this.finalizeTask(task.id);
+    const status = await this.chain.getCovenantStatus(finalized.covenantId!);
+    const executorBalance = await this.chain.getExecutorBalance();
+    return { task: finalized, status, executorBalance };
+  }
+
+  public async demoPolicyRun(): Promise<{ task: TaskRecord; status: number; executorBalance: bigint }> {
+    await this.init();
+    await this.bootstrapDemo();
+    const task = await this.createTask({
+      title: "Approve a compliant support access request under tenant policy",
+      instructions:
+        "Review the policy brief and access request fixtures in demo-fixtures/. Choose the lowest-risk request that stays within the approved regions, excludes forbidden data classes, remains read-only, includes a ticket reference, and stays within the maximum duration. Return a structured policy commitment.",
+      outputSchema: {
+        taskTitle: "string",
+        selectedRequest: "string",
+        summary: "string",
+        decisionReason: "string",
+        policyChecks: "string[]",
+        requiredControls: "string[]",
+        residualRisk: "string",
+        inspectedFiles: "string[]",
+        notes: "string[]"
+      },
+      reward: 11_000_000,
+      requiredStake: 500_000_000,
+      deadlineHours: 24,
+      commitmentProfile: "policy_commitment",
+      evidencePolicy: {
+        requiredPaths: [
+          "demo-fixtures/policy-brief.md",
+          "demo-fixtures/access-request-a.json",
+          "demo-fixtures/access-request-b.json"
+        ],
+        rationale: [
+          "Policy commitments must preserve the policy brief.",
+          "Candidate access requests must remain reviewable during verification and dispute resolution."
+        ]
+      }
+    });
+    await this.runTask(task.id);
+    const finalized = await this.finalizeTask(task.id);
+    const status = await this.chain.getCovenantStatus(finalized.covenantId!);
+    const executorBalance = await this.chain.getExecutorBalance();
+    return { task: finalized, status, executorBalance };
+  }
+
+  public async exportTaskBundle(
+    taskId: string,
+    outputDir = path.join(this.config.dataDir, "exports", taskId)
+  ): Promise<{ manifestPath: string; outputDir: string; verificationStatus: TaskVerificationReport["status"] }> {
+    const details = this.getTaskDetails(taskId);
+    if (!details) {
+      throw new Error(`Task not found: ${taskId}`);
+    }
+    const verification = await this.verifyTask(taskId);
+    const result = exportPortableTaskBundle(details, verification, outputDir);
+    return {
+      manifestPath: result.manifestPath,
+      outputDir: result.outputDir,
+      verificationStatus: verification.status
+    };
   }
 
   private requireTask(taskId: string): TaskRecord {
@@ -436,7 +736,7 @@ export class TrustCommitRuntime {
         proofHash: task.proofHash
       },
       artifactSnapshot: {
-        artifactPath: task.artifactPath,
+        artifactPath: task.artifactPath ? path.basename(task.artifactPath) : null,
         summary: artifact && typeof artifact.payload.summary === "string" ? artifact.payload.summary : null,
         payloadHash: artifact ? hashJson(artifact) : null,
         proofBundleHash: proofBundle?.proofHash ?? null
@@ -462,6 +762,7 @@ export class TrustCommitRuntime {
         : null,
       receiptSnapshot: receiptRecord?.receipts ?? {
         createTxHash: null,
+        acceptTxHash: null,
         submitTxHash: null,
         finalizeTxHash: null,
         disputeTxHash: null,
@@ -514,6 +815,8 @@ export class TrustCommitRuntime {
         facts: [
           `taskHash=${task.taskHash ?? "unknown"}`,
           `covenantId=${task.covenantId ?? "unknown"}`,
+          `commitmentProfile=${task.commitmentProfile ?? "unspecified"}`,
+          `evidencePolicyPaths=${safeEvidencePolicyPathCount(task.evidencePolicyJson)}`,
           `reward=${task.reward}`,
           `requiredStake=${task.requiredStake}`
         ],
@@ -526,7 +829,7 @@ export class TrustCommitRuntime {
         subject: "executor-run",
         payloadHash: proofBundle?.artifactHash ?? (artifact ? hashJson(artifact) : null),
         facts: [
-          `artifactPath=${task.artifactPath ?? "missing"}`,
+          `artifactPath=${task.artifactPath ? path.basename(task.artifactPath) : "missing"}`,
           `inspectedFiles=${agentLog?.evidence.files.length ?? 0}`,
           `attemptsUsed=${agentLog?.budget.attemptsUsed ?? 0}`,
           `modelCalls=${agentLog?.budget.modelCalls ?? 0}`
@@ -555,6 +858,7 @@ export class TrustCommitRuntime {
         payloadHash: receiptRecord?.headHash ?? null,
         facts: [
           `eventCount=${receiptRecord?.eventCount ?? 0}`,
+          `acceptTx=${receiptRecord?.receipts.acceptTxHash ?? "missing"}`,
           `submitTx=${receiptRecord?.receipts.submitTxHash ?? "missing"}`,
           `disputeTx=${receiptRecord?.receipts.disputeTxHash ?? "missing"}`,
           `resolveTx=${receiptRecord?.receipts.resolveTxHash ?? "missing"}`
@@ -592,7 +896,7 @@ export class TrustCommitRuntime {
     input: {
       event: ReceiptEventRecord["event"];
       actor: string;
-      txHash: string;
+      txHash: string | null;
       metadata?: Record<string, unknown>;
     }
   ): Promise<ReceiptRecord> {
@@ -634,8 +938,11 @@ export class TrustCommitRuntime {
       headHash: eventRecord.eventHash,
       eventCount: sequence,
       eventFiles: [...(previous?.eventFiles ?? []), eventFile],
+      anchoredReceiptHead:
+        input.event == "prepareSubmission" ? eventRecord.eventHash : previous?.anchoredReceiptHead ?? null,
       receipts: {
         createTxHash: input.event === "createCovenant" ? input.txHash : previous?.receipts.createTxHash ?? null,
+        acceptTxHash: input.event === "acceptCovenant" ? input.txHash : previous?.receipts.acceptTxHash ?? null,
         submitTxHash: input.event === "submitCompletion" ? input.txHash : previous?.receipts.submitTxHash ?? null,
         finalizeTxHash: input.event === "finalizeCompletion" ? input.txHash : previous?.receipts.finalizeTxHash ?? null,
         disputeTxHash: input.event === "disputeCovenant" ? input.txHash : previous?.receipts.disputeTxHash ?? null,
@@ -648,6 +955,29 @@ export class TrustCommitRuntime {
 
   private taskDir(taskId: string): string {
     return path.join(this.config.artifactDir, taskId);
+  }
+
+  private writeTaskChainContext(taskId: string): void {
+    const payload: TaskChainContext = {
+      schemaVersion: "v1",
+      taskId,
+      createdAt: Date.now(),
+      chainId: this.config.chainId ?? null,
+      rpcUrl: this.config.rpcUrl,
+      addresses: {
+        token: this.config.addresses?.token ?? null,
+        trustRegistry: this.config.addresses?.trustRegistry ?? null,
+        covenant: this.config.addresses?.covenant ?? null
+      },
+      actors: {
+        deployer: this.config.accounts?.deployer?.address ?? null,
+        creator: this.config.accounts?.creator?.address ?? null,
+        executorOwner: this.config.accounts?.executorOwner?.address ?? this.config.accounts?.executor?.address ?? null,
+        executionWallet: this.config.accounts?.executionWallet?.address ?? this.config.accounts?.executor?.address ?? null,
+        arbiter: this.config.accounts?.arbiter?.address ?? null
+      }
+    };
+    this.writeTaskJson(taskId, CHAIN_CONTEXT_FILE, payload);
   }
 
   private writeTaskJson(taskId: string, fileName: string, payload: unknown): void {
@@ -681,6 +1011,7 @@ export class TrustCommitRuntime {
           receiptSnapshot:
             details.disputeEvidence?.receiptSnapshot ?? {
               createTxHash: null,
+              acceptTxHash: null,
               submitTxHash: null,
               finalizeTxHash: null,
               disputeTxHash: null,
@@ -701,19 +1032,32 @@ export class TrustCommitRuntime {
           notes: details.agentLog?.verification.notes ?? ["No agent log was available to the arbiter."],
           proofHash: details.agentLog?.proofHash ?? task.proofHash
         },
+        rawDecision: decision,
         decision,
+        settlementGuard: {
+          applied: false,
+          overridden: false,
+          reasons: []
+        },
         guardrails: [],
         resolutionHash: hashJson(decision)
       } satisfies ArbiterReviewLog);
 
-    const finalize = (nextDecision: ArbiterDecision, extraGuardrails: string[] = []) => {
+    const finalize = (nextDecision: ArbiterDecision, extraGuardrails: string[] = [], overrideReasons: string[] = []) => {
       const resolutionHash = hashJson(nextDecision);
       return {
         decision: nextDecision,
         resolutionHash,
         arbiterLog: {
           ...baseLog,
+          rawDecision: baseLog.rawDecision ?? decision,
           decision: nextDecision,
+          settlementGuard: {
+            applied: true,
+            overridden:
+              nextDecision.winner !== (baseLog.rawDecision ?? decision).winner || nextDecision.reason !== (baseLog.rawDecision ?? decision).reason,
+            reasons: overrideReasons
+          },
           guardrails: [...baseLog.guardrails, ...extraGuardrails],
           resolutionHash
         }
@@ -742,7 +1086,7 @@ export class TrustCommitRuntime {
       if (failures.length === 0) {
         return finalize(decision, [
           "Allow executor-favoring resolution only when the proof bundle, receipt chain, and deterministic validators are all clean."
-        ]);
+        ], []);
       }
       return finalize(
         {
@@ -751,14 +1095,15 @@ export class TrustCommitRuntime {
           reason: `Executor settlement guard failed: ${failures.join("; ")}.`,
           rationale: [...decision.rationale, ...failures.map((failure) => `Deterministic settlement guard: ${failure}.`)].slice(0, 6)
         },
-        ["Block executor-favoring resolution unless the proof bundle, receipt chain, and deterministic validators are all clean."]
+        ["Block executor-favoring resolution unless the proof bundle, receipt chain, and deterministic validators are all clean."],
+        failures
       );
     }
 
     if (failures.length > 0) {
       return finalize(decision, [
         "Allow creator-favoring resolution only when at least one deterministic accountability failure is recorded."
-      ]);
+      ], failures);
     }
 
     return finalize(
@@ -768,7 +1113,8 @@ export class TrustCommitRuntime {
         reason: "Creator-favoring resolution guard failed because no deterministic accountability failure was recorded.",
         rationale: [...decision.rationale, "Deterministic settlement guard found no objective failure that justifies slashing."].slice(0, 6)
       },
-      ["Block creator-favoring resolution unless at least one deterministic accountability failure is recorded."]
+      ["Block creator-favoring resolution unless at least one deterministic accountability failure is recorded."],
+      ["No deterministic accountability failure was recorded."]
     );
   }
 
@@ -778,5 +1124,18 @@ export class TrustCommitRuntime {
       return null;
     }
     return JSON.parse(fs.readFileSync(filePath, "utf8")) as T;
+  }
+}
+
+function safeEvidencePolicyPathCount(evidencePolicyJson: string | null | undefined): number {
+  if (!evidencePolicyJson) {
+    return 0;
+  }
+
+  try {
+    const parsed = JSON.parse(evidencePolicyJson) as { requiredPaths?: unknown };
+    return Array.isArray(parsed.requiredPaths) ? parsed.requiredPaths.length : 0;
+  } catch {
+    return 0;
   }
 }

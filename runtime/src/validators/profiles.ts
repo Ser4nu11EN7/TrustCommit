@@ -114,7 +114,12 @@ const validationProfiles: ValidationProfile[] = [
   {
     name: "structured_commitment",
     applies(context) {
-      return "taskTitle" in context.payload || "decisionReason" in context.payload || "complianceChecks" in context.payload;
+      return (
+        matchesCommitmentProfile(context.task, "structured_commitment") ||
+        "taskTitle" in context.payload ||
+        "decisionReason" in context.payload ||
+        "complianceChecks" in context.payload
+      );
     },
     run(context) {
       const results: AgentLog["verification"]["validatorResults"] = [];
@@ -162,6 +167,7 @@ const validationProfiles: ValidationProfile[] = [
     name: "selection_commitment",
     applies(context) {
       return (
+        matchesCommitmentProfile(context.task, "selection_commitment") ||
         "selectedVendor" in context.payload ||
         "selectedOption" in context.payload ||
         "selectedPlan" in context.payload
@@ -202,6 +208,7 @@ const validationProfiles: ValidationProfile[] = [
     name: "budget_commitment",
     applies(context) {
       return (
+        matchesCommitmentProfile(context.task, "budget_commitment") ||
         "budgetAssessment" in context.payload ||
         /budget|ceiling|cost|spend|price/i.test(`${context.task.title}\n${context.task.instructions}`)
       );
@@ -232,9 +239,14 @@ const validationProfiles: ValidationProfile[] = [
   {
     name: "compliance_commitment",
     applies(context) {
+      if (matchesCommitmentProfile(context.task, "policy_commitment")) {
+        return false;
+      }
       return (
+        matchesCommitmentProfile(context.task, "compliance_commitment") ||
         "complianceChecks" in context.payload ||
-        /compliance|retention|audit|policy|sla|security/i.test(`${context.task.title}\n${context.task.instructions}`)
+        (!("acceptanceChecks" in context.payload) &&
+          /compliance|retention|audit|policy|sla|security/i.test(`${context.task.title}\n${context.task.instructions}`))
       );
     },
     run(context) {
@@ -262,6 +274,7 @@ const validationProfiles: ValidationProfile[] = [
     name: "procurement_commitment",
     applies(context) {
       return (
+        matchesCommitmentProfile(context.task, "procurement_commitment") ||
         "selectedVendor" in context.payload &&
         "budgetAssessment" in context.payload &&
         "complianceChecks" in context.payload &&
@@ -272,18 +285,55 @@ const validationProfiles: ValidationProfile[] = [
     run(context) {
       return runProcurementValidators(context);
     }
+  },
+  {
+    name: "remediation_commitment",
+    applies(context) {
+      return (
+        matchesCommitmentProfile(context.task, "remediation_commitment") ||
+        ("selectedPlan" in context.payload || "filesToModify" in context.payload || "acceptanceChecks" in context.payload) &&
+        context.evidenceFiles.some((file) => file.path === "demo-fixtures/remediation-brief.md") &&
+        context.evidenceFiles.some((file) => file.path.startsWith("demo-fixtures/patch-plan-") && file.path.endsWith(".json"))
+      );
+    },
+    run(context) {
+      return runRemediationValidators(context);
+    }
+  },
+  {
+    name: "policy_commitment",
+    applies(context) {
+      return (
+        matchesCommitmentProfile(context.task, "policy_commitment") ||
+        (("selectedRequest" in context.payload || "policyChecks" in context.payload || "requiredControls" in context.payload) &&
+          context.evidenceFiles.some((file) => file.path === "demo-fixtures/policy-brief.md") &&
+          context.evidenceFiles.some((file) => file.path.startsWith("demo-fixtures/access-request-") && file.path.endsWith(".json")))
+      );
+    },
+    run(context) {
+      return runPolicyValidators(context);
+    }
   }
 ];
 
 function runProcurementValidators(context: ValidationContext): AgentLog["verification"]["validatorResults"] {
   const results: AgentLog["verification"]["validatorResults"] = [];
-  const fixtureDir = path.join(context.workspaceRoot, "demo-fixtures");
-  const brief = fs.readFileSync(path.join(fixtureDir, "procurement-brief.md"), "utf8");
-  const quotes = fs
-    .readdirSync(fixtureDir)
-    .filter((fileName) => fileName.endsWith(".quote.json"))
-    .map((fileName) =>
-      JSON.parse(fs.readFileSync(path.join(fixtureDir, fileName), "utf8")) as {
+  const evidencePaths = new Set(context.evidenceFiles.map((file) => file.path));
+  const briefPath = "demo-fixtures/procurement-brief.md";
+  const quotePaths = [...evidencePaths].filter((filePath) => filePath.startsWith("demo-fixtures/") && filePath.endsWith(".quote.json"));
+  if (!evidencePaths.has(briefPath) || quotePaths.length === 0) {
+    return [
+      makeResult(
+        "procurement_evidence_completeness",
+        false,
+        "Procurement validator required a preserved brief and quote fixtures inside the evidence set."
+      )
+    ];
+  }
+
+  const brief = fs.readFileSync(path.join(context.workspaceRoot, briefPath), "utf8");
+  const quotes = quotePaths.map((quotePath) =>
+    JSON.parse(fs.readFileSync(path.join(context.workspaceRoot, quotePath), "utf8")) as {
         vendor: string;
         monthlyCostUsdc: number;
         uptimeSla: string;
@@ -375,6 +425,300 @@ function runProcurementValidators(context: ValidationContext): AgentLog["verific
   return results;
 }
 
+function runRemediationValidators(context: ValidationContext): AgentLog["verification"]["validatorResults"] {
+  const results: AgentLog["verification"]["validatorResults"] = [];
+  const evidencePaths = new Set(context.evidenceFiles.map((file) => file.path));
+  const briefPath = "demo-fixtures/remediation-brief.md";
+  const planPaths = [...evidencePaths].filter(
+    (filePath) => filePath.startsWith("demo-fixtures/patch-plan-") && filePath.endsWith(".json")
+  );
+  if (!evidencePaths.has(briefPath) || planPaths.length === 0) {
+    return [
+      makeResult(
+        "remediation_evidence_completeness",
+        false,
+        "Remediation validator required a preserved remediation brief and one or more patch plan fixtures inside the evidence set."
+      )
+    ];
+  }
+
+  const brief = fs.readFileSync(path.join(context.workspaceRoot, briefPath), "utf8");
+  const requiredFiles = parseBulletList(brief, "Required files:");
+  const forbiddenFiles = parseBulletList(brief, "Forbidden files:");
+  const requiredControls = parseBulletList(brief, "Required controls:");
+  const plans = planPaths.map((planPath) =>
+    JSON.parse(fs.readFileSync(path.join(context.workspaceRoot, planPath), "utf8")) as {
+      plan: string;
+      filesToModify: string[];
+      preservesAuditLogging: boolean;
+      addsUnitTests: boolean;
+      sanitizesInputs: boolean;
+      touchesSensitiveAuth: boolean;
+      riskScore: number;
+    }
+  );
+
+  const selectedPlanName = typeof context.payload.selectedPlan === "string" ? context.payload.selectedPlan.trim() : "";
+  const selectedPlan = plans.find((plan) => plan.plan === selectedPlanName) ?? null;
+  const filesToModify = Array.isArray(context.payload.filesToModify)
+    ? context.payload.filesToModify.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+    : [];
+  const acceptanceChecks = Array.isArray(context.payload.acceptanceChecks)
+    ? context.payload.acceptanceChecks.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+    : [];
+  const normalizedAcceptance = acceptanceChecks.map((entry) => entry.toLowerCase());
+
+  results.push(
+    makeResult(
+      "remediation_selected_plan_exists",
+      selectedPlan !== null,
+      selectedPlan
+        ? `Selected remediation plan ${selectedPlan.plan} matched an inspected patch-plan fixture.`
+        : "Selected remediation plan did not match any inspected patch-plan fixture."
+    )
+  );
+
+  if (!selectedPlan) {
+    return results;
+  }
+
+  const normalizedSelectedFiles = selectedPlan.filesToModify.map((entry) => entry.toLowerCase()).sort();
+  const normalizedArtifactFiles = filesToModify.map((entry) => entry.toLowerCase()).sort();
+  const requiredFilesPresent = requiredFiles.every((entry) => normalizedSelectedFiles.includes(entry.toLowerCase()));
+  const forbiddenTouched = forbiddenFiles.some((entry) => normalizedSelectedFiles.includes(entry.toLowerCase()));
+  const compliantPlans = plans
+    .filter(
+      (plan) =>
+        requiredFiles.every((entry) => plan.filesToModify.map((item) => item.toLowerCase()).includes(entry.toLowerCase())) &&
+        !forbiddenFiles.some((entry) => plan.filesToModify.map((item) => item.toLowerCase()).includes(entry.toLowerCase())) &&
+        plan.preservesAuditLogging &&
+        plan.addsUnitTests &&
+        plan.sanitizesInputs &&
+        !plan.touchesSensitiveAuth
+    )
+    .sort((left, right) => left.riskScore - right.riskScore);
+  const lowestRiskCompliant = compliantPlans[0] ?? null;
+
+  results.push(
+    makeResult(
+      "remediation_files_match_selected_plan",
+      normalizedArtifactFiles.length > 0 && JSON.stringify(normalizedArtifactFiles) === JSON.stringify(normalizedSelectedFiles),
+      normalizedArtifactFiles.length > 0
+        ? "Artifact filesToModify matched the selected patch plan."
+        : "Artifact filesToModify was missing or empty."
+    )
+  );
+  results.push(
+    makeResult(
+      "remediation_required_files_covered",
+      requiredFilesPresent,
+      requiredFilesPresent
+        ? "Selected remediation plan covered all required files from the brief."
+        : `Selected remediation plan did not cover all required files: ${requiredFiles.join(", ")}.`
+    )
+  );
+  results.push(
+    makeResult(
+      "remediation_forbidden_files_avoided",
+      !forbiddenTouched && !selectedPlan.touchesSensitiveAuth,
+      !forbiddenTouched && !selectedPlan.touchesSensitiveAuth
+        ? "Selected remediation plan avoided forbidden files and sensitive auth flows."
+        : "Selected remediation plan touched a forbidden file or sensitive auth flow."
+    )
+  );
+  results.push(
+    makeResult(
+      "remediation_controls_satisfied",
+      selectedPlan.preservesAuditLogging && selectedPlan.addsUnitTests && selectedPlan.sanitizesInputs,
+      selectedPlan.preservesAuditLogging && selectedPlan.addsUnitTests && selectedPlan.sanitizesInputs
+        ? "Selected remediation plan satisfied audit logging, test, and sanitization controls."
+        : "Selected remediation plan failed one or more deterministic remediation controls."
+    )
+  );
+  results.push(
+    makeResult(
+      "remediation_acceptance_checks_present",
+      acceptanceChecks.length >= requiredControls.length,
+      acceptanceChecks.length >= requiredControls.length
+        ? "Artifact included an explicit acceptance check set."
+        : "Artifact omitted one or more expected acceptance checks."
+    )
+  );
+  results.push(
+    makeResult(
+      "remediation_acceptance_checks_grounded",
+      requiredControls.every((control) => matchesControl(control, normalizedAcceptance)),
+      requiredControls.every((control) => matchesControl(control, normalizedAcceptance))
+        ? "Artifact acceptance checks covered the required remediation controls."
+        : `Artifact acceptance checks did not cover all required controls: ${requiredControls.join(", ")}.`
+    )
+  );
+  results.push(
+    makeResult(
+      "remediation_lowest_risk_compliant_plan",
+      lowestRiskCompliant?.plan === selectedPlan.plan,
+      lowestRiskCompliant
+        ? `Lowest-risk compliant remediation plan is ${lowestRiskCompliant.plan} with risk score ${lowestRiskCompliant.riskScore}.`
+        : "No compliant remediation plan could be derived from the inspected fixtures."
+    )
+  );
+
+  return results;
+}
+
+function runPolicyValidators(context: ValidationContext): AgentLog["verification"]["validatorResults"] {
+  const results: AgentLog["verification"]["validatorResults"] = [];
+  const evidencePaths = new Set(context.evidenceFiles.map((file) => file.path));
+  const briefPath = "demo-fixtures/policy-brief.md";
+  const requestPaths = [...evidencePaths].filter(
+    (filePath) => filePath.startsWith("demo-fixtures/access-request-") && filePath.endsWith(".json")
+  );
+  if (!evidencePaths.has(briefPath) || requestPaths.length === 0) {
+    return [
+      makeResult(
+        "policy_evidence_completeness",
+        false,
+        "Policy validator required a preserved policy brief and one or more access request fixtures inside the evidence set."
+      )
+    ];
+  }
+
+  const brief = fs.readFileSync(path.join(context.workspaceRoot, briefPath), "utf8");
+  const approvedRegions = parseBulletList(brief, "Approved regions:").map((entry) => entry.toLowerCase());
+  const forbiddenDataClasses = parseBulletList(brief, "Forbidden data classes:").map((entry) => entry.toLowerCase());
+  const requiredControls = parseBulletList(brief, "Required controls:");
+  const maxDurationDays = Number(brief.match(/Maximum duration:\s*(\d+)\s*days/i)?.[1] ?? Number.NaN);
+  const requests = requestPaths.map((requestPath) =>
+    JSON.parse(fs.readFileSync(path.join(context.workspaceRoot, requestPath), "utf8")) as {
+      request: string;
+      region: string;
+      dataClasses: string[];
+      readOnly: boolean;
+      durationDays: number;
+      ticketRef: string | null;
+      riskScore: number;
+    }
+  );
+
+  const selectedRequestName = typeof context.payload.selectedRequest === "string" ? context.payload.selectedRequest.trim() : "";
+  const selectedRequest = requests.find((request) => request.request === selectedRequestName) ?? null;
+  const policyChecks = Array.isArray(context.payload.policyChecks)
+    ? context.payload.policyChecks.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+    : [];
+  const controls = Array.isArray(context.payload.requiredControls)
+    ? context.payload.requiredControls.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+    : [];
+  const normalizedPolicyChecks = policyChecks.map((entry) => entry.toLowerCase());
+  const normalizedControls = controls.map((entry) => entry.toLowerCase());
+
+  results.push(
+    makeResult(
+      "policy_selected_request_exists",
+      selectedRequest !== null,
+      selectedRequest
+        ? `Selected access request ${selectedRequest.request} matched an inspected fixture.`
+        : "Selected access request did not match any inspected fixture."
+    )
+  );
+
+  if (!selectedRequest) {
+    return results;
+  }
+
+  const compliantRequests = requests
+    .filter((request) => {
+      const normalizedClasses = request.dataClasses.map((entry) => entry.toLowerCase());
+      return (
+        approvedRegions.includes(request.region.toLowerCase()) &&
+        normalizedClasses.every((entry) => !forbiddenDataClasses.includes(entry)) &&
+        request.readOnly &&
+        Number.isFinite(maxDurationDays) &&
+        request.durationDays <= maxDurationDays &&
+        !!request.ticketRef
+      );
+    })
+    .sort((left, right) => left.riskScore - right.riskScore);
+  const lowestRiskCompliant = compliantRequests[0] ?? null;
+
+  results.push(
+    makeResult(
+      "policy_region_allowed",
+      approvedRegions.includes(selectedRequest.region.toLowerCase()),
+      `Selected request region ${selectedRequest.region} ${approvedRegions.includes(selectedRequest.region.toLowerCase()) ? "is" : "is not"} inside the approved region set.`
+    )
+  );
+  results.push(
+    makeResult(
+      "policy_forbidden_data_avoided",
+      selectedRequest.dataClasses.map((entry) => entry.toLowerCase()).every((entry) => !forbiddenDataClasses.includes(entry)),
+      selectedRequest.dataClasses.length > 0
+        ? "Selected request data classes were checked against the forbidden data list."
+        : "Selected request omitted data classes."
+    )
+  );
+  results.push(
+    makeResult(
+      "policy_read_only_control",
+      selectedRequest.readOnly,
+      selectedRequest.readOnly
+        ? "Selected request remained read-only as required by policy."
+        : "Selected request was not read-only."
+    )
+  );
+  results.push(
+    makeResult(
+      "policy_duration_limit",
+      Number.isFinite(maxDurationDays) && selectedRequest.durationDays <= maxDurationDays,
+      Number.isFinite(maxDurationDays)
+        ? `Selected request duration ${selectedRequest.durationDays} days was checked against a ${maxDurationDays}-day maximum.`
+        : "Maximum duration could not be parsed from the policy brief."
+    )
+  );
+  results.push(
+    makeResult(
+      "policy_ticket_reference",
+      typeof selectedRequest.ticketRef === "string" && selectedRequest.ticketRef.trim().length > 0,
+      selectedRequest.ticketRef ? `Selected request referenced ticket ${selectedRequest.ticketRef}.` : "Selected request was missing a ticket reference."
+    )
+  );
+  results.push(
+    makeResult(
+      "policy_checks_present",
+      policyChecks.length >= 2,
+      policyChecks.length >= 2 ? "Artifact included explicit policy checks." : "Artifact omitted explicit policy checks."
+    )
+  );
+  results.push(
+    makeResult(
+      "policy_controls_present",
+      controls.length >= requiredControls.length,
+      controls.length >= requiredControls.length
+        ? "Artifact included the required control list."
+        : "Artifact omitted one or more required policy controls."
+    )
+  );
+  results.push(
+    makeResult(
+      "policy_controls_grounded",
+      requiredControls.every((control) => matchesControl(control, normalizedPolicyChecks) || matchesControl(control, normalizedControls)),
+      requiredControls.every((control) => matchesControl(control, normalizedPolicyChecks) || matchesControl(control, normalizedControls))
+        ? "Artifact policy checks covered the required controls from the policy brief."
+        : `Artifact policy checks did not cover all required controls: ${requiredControls.join(", ")}.`
+    )
+  );
+  results.push(
+    makeResult(
+      "policy_lowest_risk_compliant_request",
+      lowestRiskCompliant?.request === selectedRequest.request,
+      lowestRiskCompliant
+        ? `Lowest-risk compliant request is ${lowestRiskCompliant.request} with risk score ${lowestRiskCompliant.riskScore}.`
+        : "No compliant access request could be derived from the inspected fixtures."
+    )
+  );
+
+  return results;
+}
+
 function extractInspectedFiles(value: unknown): string[] | null {
   if (!Array.isArray(value)) {
     return null;
@@ -401,10 +745,39 @@ function firstString(...values: unknown[]): string | null {
   return null;
 }
 
+function parseBulletList(content: string, heading: string): string[] {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = content.match(new RegExp(`${escaped}\\s*([\\s\\S]*?)(?:\\n\\n|$)`, "i"));
+  if (!match) {
+    return [];
+  }
+  return match[1]
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[-*]\s*/, "").trim())
+    .filter(Boolean);
+}
+
+function matchesControl(control: string, normalizedAcceptance: string[]): boolean {
+  const ignored = new Set(["with", "from", "that"]);
+  const keywords = control
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length >= 4 && !ignored.has(token));
+  return keywords.some((keyword) => {
+    const stem = keyword.slice(0, 6);
+    return normalizedAcceptance.some((entry) => entry.includes(keyword) || entry.includes(stem));
+  });
+}
+
 function makeResult(name: string, passed: boolean, details: string) {
   return {
     name,
     passed,
     details
   };
+}
+
+function matchesCommitmentProfile(task: TaskRecord, expected: string): boolean {
+  return task.commitmentProfile?.trim().toLowerCase() === expected;
 }

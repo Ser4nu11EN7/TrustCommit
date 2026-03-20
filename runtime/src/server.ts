@@ -56,7 +56,23 @@ function parseTaskSpec(body: Record<string, unknown>): TaskSpec {
     outputSchema,
     reward: Number(body.reward ?? 10_000_000),
     requiredStake: Number(body.requiredStake ?? 500_000_000),
-    deadlineHours: Number(body.deadlineHours ?? 24)
+    deadlineHours: Number(body.deadlineHours ?? 24),
+    commitmentProfile: typeof body.commitmentProfile === "string" ? body.commitmentProfile : null,
+    evidencePolicy:
+      typeof body.evidencePolicy === "object" && body.evidencePolicy
+        ? {
+            requiredPaths: Array.isArray((body.evidencePolicy as { requiredPaths?: unknown }).requiredPaths)
+              ? ((body.evidencePolicy as { requiredPaths: unknown[] }).requiredPaths.filter(
+                  (entry): entry is string => typeof entry === "string"
+                ))
+              : [],
+            rationale: Array.isArray((body.evidencePolicy as { rationale?: unknown }).rationale)
+              ? ((body.evidencePolicy as { rationale: unknown[] }).rationale.filter(
+                  (entry): entry is string => typeof entry === "string"
+                ))
+              : []
+          }
+        : null
   };
 }
 
@@ -138,6 +154,22 @@ export async function startHttpServer(port = Number(process.env.PORT ?? 3000), h
       if (method === "POST" && runTaskId) {
         const task = await runtime.runTask(runTaskId);
         jsonResponse(response, 200, { ok: true, task });
+        return;
+      }
+
+      const verifyTaskId = routeTaskAction(url.pathname, "verify");
+      if (method === "GET" && verifyTaskId) {
+        const report = await runtime.verifyTask(verifyTaskId);
+        jsonResponse(response, 200, { ok: true, report });
+        return;
+      }
+
+      const exportTaskId = routeTaskAction(url.pathname, "export");
+      if (method === "POST" && exportTaskId) {
+        const body = await readJsonBody(request);
+        const out = typeof body.out === "string" ? body.out : undefined;
+        const result = await runtime.exportTaskBundle(exportTaskId, out);
+        jsonResponse(response, 200, { ok: true, result });
         return;
       }
 

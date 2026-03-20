@@ -3,6 +3,8 @@ import path from "node:path";
 import type { AgentManifest, RuntimeConfig } from "../core/types.js";
 
 export function buildAgentManifest(config: RuntimeConfig): AgentManifest {
+  const executorOwner = config.accounts?.executorOwner?.address ?? config.accounts?.executor?.address ?? null;
+  const executionWallet = config.accounts?.executionWallet?.address ?? config.accounts?.executor?.address ?? null;
   return {
     schemaVersion: "v1",
     name: "TrustCommit Executor",
@@ -13,7 +15,9 @@ export function buildAgentManifest(config: RuntimeConfig): AgentManifest {
       providerStrategy: [config.primaryProvider, config.fallbackProvider]
     },
     operator: {
-      address: config.accounts?.executor?.address ?? null
+      address: executionWallet,
+      ownerAddress: executorOwner,
+      executionWallet
     },
     chains: {
       chainId: config.chainId ?? null,

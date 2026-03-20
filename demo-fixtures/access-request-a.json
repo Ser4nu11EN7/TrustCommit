@@ -1,0 +1,9 @@
+{
+  "request": "Access Request A",
+  "region": "EU",
+  "dataClasses": ["logs", "email"],
+  "readOnly": true,
+  "durationDays": 14,
+  "ticketRef": "INC-204",
+  "riskScore": 2
+}

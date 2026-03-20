@@ -19,6 +19,8 @@ export function openDatabase(dbPath: string): DatabaseSync {
       covenant_id TEXT,
       executor_agent_id INTEGER NOT NULL,
       created_by TEXT NOT NULL,
+      commitment_profile TEXT,
+      evidence_policy_json TEXT,
       proof_hash TEXT,
       task_hash TEXT,
       artifact_path TEXT,
@@ -52,6 +54,8 @@ export function openDatabase(dbPath: string): DatabaseSync {
   `);
   ensureColumn(db, "runs", "input_json", "TEXT");
   ensureColumn(db, "runs", "log_path", "TEXT");
+  ensureColumn(db, "tasks", "commitment_profile", "TEXT");
+  ensureColumn(db, "tasks", "evidence_policy_json", "TEXT");
   return db;
 }
 

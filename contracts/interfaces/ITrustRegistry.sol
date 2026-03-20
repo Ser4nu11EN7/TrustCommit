@@ -19,7 +19,7 @@ interface ITrustRegistry {
     event StakeWithdrawn(uint256 indexed agentId, uint128 amount, uint128 newBalance);
     event StakeLocked(uint256 indexed agentId, bytes32 indexed covenantId, uint128 amount);
     event StakeUnlocked(uint256 indexed agentId, bytes32 indexed covenantId, uint128 amount);
-    event StakeSlashed(uint256 indexed agentId, bytes32 indexed covenantId, uint128 amount, address receiver);
+    event StakeSlashed(uint256 indexed agentId, bytes32 indexed covenantId, uint128 amount, address receiver, bytes32 reasonHash);
     event ReputationUpdated(uint256 indexed agentId, uint16 newScoreBps, bytes32 evidenceRoot);
     event ExecutionWalletUpdated(uint256 indexed agentId, address oldWallet, address newWallet);
 
@@ -35,5 +35,6 @@ interface ITrustRegistry {
     function getAgentState(uint256 agentId) external view returns (AgentState memory);
     function stakeBalance(uint256 agentId) external view returns (uint128);
     function lockedTotal(uint256 agentId) external view returns (uint128);
+    function executionWalletNonce(uint256 agentId) external view returns (uint256);
     function ownerOf(uint256 agentId) external view returns (address);
 }

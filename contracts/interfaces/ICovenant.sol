@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 interface ICovenant {
     enum CovenantStatus {
         None,
+        Pending,
         Active,
         Submitted,
         Disputed,
@@ -32,10 +33,23 @@ interface ICovenant {
         uint64 deadline,
         bytes32 taskHash
     );
-    event CompletionSubmitted(bytes32 indexed covenantId, bytes32 proofHash, uint64 submittedAt);
+    event CovenantAccepted(bytes32 indexed covenantId, address indexed signer, uint64 acceptedAt);
+    event CompletionSubmitted(
+        bytes32 indexed covenantId,
+        bytes32 proofHash,
+        bytes32 receiptHead,
+        address indexed signer,
+        uint64 submittedAt
+    );
     event CovenantCompleted(bytes32 indexed covenantId, address indexed recipient, uint128 reward);
-    event CovenantDisputed(bytes32 indexed covenantId, bytes32 evidenceHash);
-    event DisputeResolved(bytes32 indexed covenantId, bool executorWins, bytes32 resolutionHash);
+    event CovenantDisputed(bytes32 indexed covenantId, bytes32 evidenceHash, bytes32 proofHash, bytes32 receiptHead);
+    event DisputeResolved(
+        bytes32 indexed covenantId,
+        bool executorWins,
+        bytes32 resolutionHash,
+        bytes32 evidenceHash,
+        bytes32 receiptHead
+    );
     event CancelApprovalGiven(bytes32 indexed covenantId, address indexed approver);
     event CovenantCancelled(bytes32 indexed covenantId);
     event CovenantSlashed(
@@ -54,7 +68,8 @@ interface ICovenant {
         bytes32 taskHash
     ) external returns (bytes32 covenantId);
 
-    function submitCompletion(bytes32 covenantId, bytes32 proofHash) external;
+    function acceptCovenant(bytes32 covenantId) external;
+    function submitCompletion(bytes32 covenantId, bytes32 proofHash, bytes32 receiptHead, bytes calldata operatorSignature) external;
     function finalizeCompletion(bytes32 covenantId) external;
     function disputeCovenant(bytes32 covenantId, bytes32 evidenceHash) external;
     function resolveDispute(bytes32 covenantId, bool executorWins, bytes32 resolutionHash) external;
@@ -73,6 +88,9 @@ interface ICovenant {
     );
     function completionSubmittedAt(bytes32 covenantId) external view returns (uint64);
     function completionProof(bytes32 covenantId) external view returns (bytes32);
+    function proofCommitment(bytes32 proofHash) external view returns (bytes32);
+    function completionReceiptHead(bytes32 covenantId) external view returns (bytes32);
+    function completionSigner(bytes32 covenantId) external view returns (address);
     function disputeEvidence(bytes32 covenantId) external view returns (bytes32);
     function resolutionHash(bytes32 covenantId) external view returns (bytes32);
     function cancelApprovals(bytes32 covenantId, address approver) external view returns (bool);

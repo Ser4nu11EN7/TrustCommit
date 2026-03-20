@@ -16,6 +16,11 @@ export interface TaskSpec {
   reward: number;
   requiredStake: number;
   deadlineHours: number;
+  commitmentProfile?: string | null;
+  evidencePolicy?: {
+    requiredPaths: string[];
+    rationale: string[];
+  } | null;
 }
 
 export interface TaskRecord {
@@ -30,6 +35,8 @@ export interface TaskRecord {
   covenantId: `0x${string}` | null;
   executorAgentId: number;
   createdBy: string;
+  commitmentProfile?: string | null;
+  evidencePolicyJson?: string | null;
   proofHash: `0x${string}` | null;
   taskHash: `0x${string}` | null;
   artifactPath: string | null;
@@ -51,6 +58,7 @@ export interface ExecutionEvidenceFile {
   excerpt: string;
   bytes: number;
   observedAt: number;
+  snapshotPath?: string | null;
 }
 
 export interface ExecutionEvidence {
@@ -95,6 +103,11 @@ export interface AgentLog {
     outputSchema: Record<string, string>;
     covenantId: `0x${string}` | null;
     taskHash: `0x${string}` | null;
+    commitmentProfile?: string | null;
+    evidencePolicy?: {
+      requiredPaths: string[];
+      rationale: string[];
+    } | null;
   };
   evidence: ExecutionEvidence;
   plan: ExecutionPlan;
@@ -137,6 +150,7 @@ export interface AgentLog {
       proofBundlePath: string;
     };
     onchain: {
+      acceptTxHash: string | null;
       proofHash: `0x${string}`;
       artifactHash: `0x${string}`;
       submitTxHash: string | null;
@@ -161,6 +175,8 @@ export interface AgentManifest {
   };
   operator: {
     address: `0x${string}` | null;
+    ownerAddress: `0x${string}` | null;
+    executionWallet: `0x${string}` | null;
   };
   chains: {
     chainId: number | null;
@@ -229,6 +245,7 @@ export interface ReceiptRecord {
   taskHash: `0x${string}` | null;
   covenantId: `0x${string}` | null;
   proofHash: `0x${string}` | null;
+  anchoredReceiptHead: `0x${string}` | null;
   createdAt: number;
   updatedAt: number;
   headHash: `0x${string}` | null;
@@ -236,6 +253,7 @@ export interface ReceiptRecord {
   eventFiles: string[];
   receipts: {
     createTxHash: string | null;
+    acceptTxHash: string | null;
     submitTxHash: string | null;
     finalizeTxHash: string | null;
     disputeTxHash: string | null;
@@ -247,9 +265,16 @@ export interface ReceiptEventRecord {
   schemaVersion: "v1";
   taskId: string;
   sequence: number;
-  event: "createCovenant" | "submitCompletion" | "finalizeCompletion" | "disputeCovenant" | "resolveDispute";
+  event:
+    | "createCovenant"
+    | "acceptCovenant"
+    | "prepareSubmission"
+    | "submitCompletion"
+    | "finalizeCompletion"
+    | "disputeCovenant"
+    | "resolveDispute";
   actor: string;
-  txHash: string;
+  txHash: string | null;
   createdAt: number;
   prevHash: `0x${string}` | null;
   snapshot: {
@@ -286,11 +311,18 @@ export interface ProofBundleRecord {
 export interface SignatureRecord {
   signer: `0x${string}` | null;
   signedAt: number;
-  scheme: "eip191";
+  scheme: "eip191" | "eip712";
   purpose: string;
-  statement: string;
   payloadHash: `0x${string}`;
   signature: `0x${string}`;
+  statement?: string | null;
+  domain?: {
+    name: string;
+    version: string;
+    chainId: number | null;
+    verifyingContract: `0x${string}` | null;
+    primaryType: "TrustCommitAttestation";
+  } | null;
 }
 
 export interface ExecutionTraceEntry {
@@ -383,9 +415,28 @@ export interface ArbiterReviewLog {
     notes: string[];
     proofHash: `0x${string}` | null;
   };
+  rawDecision: ArbiterDecision | null;
   decision: ArbiterDecision;
+  settlementGuard: {
+    applied: boolean;
+    overridden: boolean;
+    reasons: string[];
+  };
   guardrails: string[];
   resolutionHash: `0x${string}`;
+}
+
+export interface PortableTaskBundleManifest {
+  schemaVersion: "v1";
+  taskId: string;
+  exportedAt: number;
+  verificationStatus: TaskVerificationReport["status"];
+  proofHash: `0x${string}` | null;
+  receiptHead: `0x${string}` | null;
+  chainId: number | null;
+  covenantId: `0x${string}` | null;
+  includedFiles: string[];
+  fileHashes: Record<string, `0x${string}`>;
 }
 
 export interface GeneratedTaskPlan {
@@ -452,6 +503,7 @@ export interface TaskDetails {
   artifact: ArtifactEnvelope | null;
   agentLog: AgentLog | null;
   proofBundle: ProofBundleRecord | null;
+  chainContext: TaskChainContext | null;
   receiptRecord: ReceiptRecord | null;
   receiptEvents: ReceiptEventRecord[];
   disputeRecord: DisputeRecord | null;
@@ -483,6 +535,37 @@ export interface TaskVerificationReport {
   checks: VerificationCheckResult[];
 }
 
+export interface OnchainSubmissionBinding {
+  proofHash: `0x${string}` | null;
+  receiptHead: `0x${string}` | null;
+  signer: `0x${string}` | null;
+}
+
+export interface OnchainAgentAuthority {
+  owner: `0x${string}` | null;
+  executionWallet: `0x${string}` | null;
+}
+
+export interface TaskChainContext {
+  schemaVersion: "v1";
+  taskId: string;
+  createdAt: number;
+  chainId: number | null;
+  rpcUrl: string;
+  addresses: {
+    token: `0x${string}` | null;
+    trustRegistry: `0x${string}` | null;
+    covenant: `0x${string}` | null;
+  };
+  actors: {
+    deployer: `0x${string}` | null;
+    creator: `0x${string}` | null;
+    executorOwner: `0x${string}` | null;
+    executionWallet: `0x${string}` | null;
+    arbiter: `0x${string}` | null;
+  };
+}
+
 export interface RuntimeConfig {
   workspaceRoot: string;
   dataDir: string;
@@ -501,6 +584,8 @@ export interface RuntimeConfig {
     deployer: AccountConfig;
     creator: AccountConfig;
     executor: AccountConfig;
+    executorOwner?: AccountConfig;
+    executionWallet?: AccountConfig;
     arbiter: AccountConfig;
   };
 }

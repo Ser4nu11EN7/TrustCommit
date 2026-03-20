@@ -83,7 +83,13 @@ export class AiArbiter {
         notes: input.agentLog?.verification.notes ?? ["No agent log was available to the arbiter."],
         proofHash: input.agentLog?.proofHash ?? task.proofHash
       },
+      rawDecision: decision,
       decision,
+      settlementGuard: {
+        applied: false,
+        overridden: false,
+        reasons: []
+      },
       guardrails: [
         "Use only the recorded dispute, verification, and receipt trail context.",
         "Prefer creator if the accountable evidence is incomplete or contradicted.",
