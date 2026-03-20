@@ -425,10 +425,12 @@ export function LandingPage() {
 
           <div className="flex flex-col gap-3 text-[0.95rem] font-light md:col-span-4">
             <a
-              href="#"
+              href="https://github.com/Ser4nu11EN7/TrustCommit/blob/master/docs/SUBMISSION.md"
+              target="_blank"
+              rel="noreferrer"
               className="w-fit border-b border-transparent pb-1 text-[#E8E6E0] transition-all hover:border-[rgba(232,230,224,0.1)] hover:opacity-60"
             >
-              Read Whitepaper <span className="font-['Fragment_Mono'] text-xs">↗</span>
+              Read Submission Frame <span className="font-['Fragment_Mono'] text-xs">↗</span>
             </a>
             <a
               href="https://github.com/Ser4nu11EN7/TrustCommit#readme"
@@ -458,7 +460,7 @@ export function LandingPage() {
             <div>
               PROTOCOL V1.0.0
               <br />
-              MAINNET BETA
+              PROCUREMENT CORE
             </div>
             <div>
               SYS <span className="text-[#E8E6E0]">{pingVal}</span>ms
@@ -596,11 +598,11 @@ export function LandingPage() {
 
             <div className="flex flex-col justify-end gap-4 bg-[#080808] p-10 text-right font-['Fragment_Mono'] text-[0.65rem] text-[#888880] md:p-20">
               <div className="mb-8 flex justify-end gap-6">
-                <a href="#" className="transition-colors hover:text-[#E8E6E0]">Twitter</a>
-                <a href="#" className="transition-colors hover:text-[#E8E6E0]">Discord</a>
-                <a href="#" className="transition-colors hover:text-[#E8E6E0]">Blog</a>
+                <a href="https://github.com/Ser4nu11EN7/TrustCommit" target="_blank" rel="noreferrer" className="transition-colors hover:text-[#E8E6E0]">GitHub</a>
+                <a href="https://github.com/Ser4nu11EN7/TrustCommit/blob/master/docs/SUBMISSION.md" target="_blank" rel="noreferrer" className="transition-colors hover:text-[#E8E6E0]">Submission</a>
+                <Link to="/console" className="transition-colors hover:text-[#E8E6E0]">Console</Link>
               </div>
-              <p>© 2024 TrustCommit Network.</p>
+              <p>© 2026 TrustCommit Network.</p>
               <p>Cryptography by design. Accountability by default.</p>
             </div>
           </section>

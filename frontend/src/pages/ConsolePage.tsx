@@ -200,7 +200,7 @@ export function ConsolePage() {
         });
       } catch (loadError) {
         if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : 'Unknown error');
+          setError(loadError instanceof Error ? loadError.message : 'Failed to load runtime state.');
         }
       } finally {
         if (!cancelled) {
@@ -279,6 +279,8 @@ export function ConsolePage() {
 
   useEffect(() => {
     setSelectedArtifactKey(null);
+    setActionMessage(null);
+    setActionError(null);
   }, [selectedCovenant]);
 
   const navItems = ['Covenants', 'Registry', 'Disputes', 'Staking'];
@@ -460,7 +462,7 @@ export function ConsolePage() {
         requiredStake: 500000000,
         deadlineHours: 24,
       });
-      setActionMessage(`Created ${response.task.id}`);
+      setActionMessage(`Created covenant ${shortHash(response.task.id, 6)}`);
       await reloadConsole(response.task.id);
     } catch (createError) {
       setActionError(createError instanceof Error ? createError.message : 'Failed to create covenant');
@@ -483,7 +485,7 @@ export function ConsolePage() {
       if (action === 'verify') {
         const response = await fetchJson(`/tasks/${selectedTask.id}/verify`);
         setVerification(response.report);
-        setActionMessage(`Verification ${response.report.status}`);
+        setActionMessage(`Verifier returned ${response.report.status}`);
       } else if (action === 'export') {
         const response = await postJson(`/tasks/${selectedTask.id}/export`, {});
         setActionMessage(`Bundle exported to ${response.result.outputDir}`);
@@ -494,7 +496,12 @@ export function ConsolePage() {
         setRefreshNonce((value) => value + 1);
       } else {
         await postJson(`/tasks/${selectedTask.id}/${action}`, body);
-        setActionMessage(`${action} committed`);
+        const successMessages = {
+          run: 'Execution recorded',
+          finalize: 'Settlement finalized',
+          dispute: 'Dispute opened',
+        };
+        setActionMessage(successMessages[action] ?? `${action} committed`);
         if (action === 'dispute') {
           setDisputeDraft('');
           setDisputeComposeOpen(false);
@@ -576,14 +583,15 @@ export function ConsolePage() {
             <div style={{ height: '1rem', width: '1px', backgroundColor: 'rgba(255,255,255,0.08)' }}></div>
             <nav style={{ display: 'flex', gap: '1rem', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: '#a3a3a3' }}>
               {navItems.map((item) => (
-                <a
+                <button
                   key={item}
-                  href="#"
-                  onClick={(e) => { e.preventDefault(); setActiveNav(item); }}
-                  style={{ color: activeNav === item ? '#ffffff' : '#a3a3a3', textDecoration: 'none', transition: 'color 0.15s' }}
+                  type="button"
+                  onClick={() => setActiveNav(item)}
+                  aria-pressed={activeNav === item}
+                  style={{ color: activeNav === item ? '#ffffff' : '#a3a3a3', textDecoration: 'none', transition: 'color 0.15s', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.2em' }}
                 >
                   {item}
-                </a>
+                </button>
               ))}
             </nav>
           </div>
@@ -616,12 +624,14 @@ export function ConsolePage() {
               <button
                 type="button"
                 onClick={() => handleCreateTask()}
+                disabled={actionLoading === 'create'}
+                aria-busy={actionLoading === 'create'}
                 className="dither-hover"
                 style={{
                   width: '100%',
                   padding: '0.75rem',
                   border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#ffffff',
+                  color: actionLoading === 'create' ? '#525252' : '#ffffff',
                   fontFamily: "'JetBrains Mono', monospace",
                   fontSize: '0.75rem',
                   textTransform: 'uppercase',
@@ -631,11 +641,11 @@ export function ConsolePage() {
                   justifyContent: 'center',
                   gap: '0.5rem',
                   backgroundColor: 'transparent',
-                  cursor: 'pointer',
+                  cursor: actionLoading === 'create' ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s',
                 }}
               >
-                <span>+</span> Define New Covenant
+                <span>+</span> {actionLoading === 'create' ? 'Creating Covenant...' : 'Define New Covenant'}
               </button>
             </div>
 
@@ -699,7 +709,7 @@ export function ConsolePage() {
                 </div>
               ))}
               {!covenants.length ? (
-                <div style={{ padding: '1rem', color: '#525252', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.7rem' }}>No covenants in this view.</div>
+                <div style={{ padding: '1rem', color: '#525252', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.7rem', lineHeight: '1.6' }}>No covenants match this filter yet. Define a new covenant or switch views.</div>
               ) : null}
             </div>
           </aside>
@@ -713,7 +723,7 @@ export function ConsolePage() {
                 <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: statusColor(selectedTask?.status), textTransform: 'uppercase', letterSpacing: '0.2em', border: `1px solid ${statusColor(selectedTask?.status)}`, padding: '0.125rem 0.5rem', backgroundColor: 'rgba(115,115,115,0.1)' }}>
                   {details?.disputeRecord ? 'Disputed' : details?.resolutionRecord ? 'Resolved' : selectedTask?.status === 'submitted' ? 'Awaiting Consensus' : selectedTask?.status === 'completed' ? 'Settled' : 'Executing'}
                 </span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3' }}>{detailsLoading ? 'Loading selected covenant...' : selectedTask ? `Procurement reward: ${formatToken(selectedTask.reward)} USDC` : 'Awaiting covenant selection'}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3' }}>{detailsLoading ? 'Loading selected covenant...' : selectedTask ? `Procurement reward: ${formatToken(selectedTask.reward)} USDC` : 'Select a covenant to inspect its lifecycle.'}</span>
               </div>
               <h1 style={{ fontSize: '1.875rem', fontWeight: 300, color: '#ffffff', letterSpacing: '-0.025em', marginTop: '0.5rem', marginBottom: '1rem' }}>{selectedTask?.title ?? 'TrustCommit Console'}</h1>
 
@@ -838,7 +848,7 @@ export function ConsolePage() {
                     </>
                   ) : (
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.63rem', color: '#525252', lineHeight: '1.6' }}>
-                      No artifact has been emitted for this covenant yet.
+                      No execution artifacts have been emitted for this covenant yet.
                     </div>
                   )}
                 </div>
@@ -931,7 +941,7 @@ export function ConsolePage() {
                   </div>
                   <div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', marginBottom: '0.25rem' }}>Covenant Accepted</div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252' }}>{details?.receiptRecord?.receipts?.createTxHash ? `Confirmed ${shortHash(details.receiptRecord.receipts.createTxHash)}` : 'Awaiting create receipt'}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252' }}>{details?.receiptRecord?.receipts?.createTxHash ? `Confirmed ${shortHash(details.receiptRecord.receipts.createTxHash)}` : 'Waiting for covenant creation receipt'}</div>
                     {canRun ? (
                       <button
                         type="button"
@@ -953,7 +963,7 @@ export function ConsolePage() {
                   <div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#737373', marginBottom: '0.25rem' }}>{details?.disputeRecord ? 'Dispute Review' : 'Proof Verification'}</div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#a3a3a3', lineHeight: '1.6' }}>
-                      {details?.disputeRecord ? details.disputeRecord.reason : details?.receiptRecord?.receipts?.submitTxHash ? `Submitted ${shortHash(details.receiptRecord.receipts.submitTxHash)}` : 'Awaiting proof submission'}<br />
+                      {details?.disputeRecord ? details.disputeRecord.reason : details?.receiptRecord?.receipts?.submitTxHash ? `Submitted ${shortHash(details.receiptRecord.receipts.submitTxHash)}` : 'Waiting for proof submission'}<br />
                       Checks: <span style={{ color: '#ffffff' }}>{selectedLog?.verification?.validatorResults?.length ?? 0} validators</span>
                     </div>
                     {!details?.disputeRecord ? (
@@ -974,7 +984,7 @@ export function ConsolePage() {
                   <div style={{ width: '1rem', height: '1rem', borderRadius: '9999px', backgroundColor: '#000000', border: '2px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 10, marginTop: '0.125rem' }}></div>
                   <div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3', marginBottom: '0.25rem' }}>{details?.resolutionRecord ? 'Resolved' : 'Settlement and Consequence'}</div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252' }}>{details?.resolutionRecord ? `${details.resolutionRecord.outcome} ${shortHash(details.resolutionRecord.txHash)}` : details?.receiptRecord?.receipts?.finalizeTxHash ? `Settled ${shortHash(details.receiptRecord.receipts.finalizeTxHash)}` : 'Awaiting settlement'}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252' }}>{details?.resolutionRecord ? `${details.resolutionRecord.outcome} ${shortHash(details.resolutionRecord.txHash)}` : details?.receiptRecord?.receipts?.finalizeTxHash ? `Settled ${shortHash(details.receiptRecord.receipts.finalizeTxHash)}` : 'Waiting for settlement'}</div>
                     {canFinalize ? (
                       <button
                         type="button"
@@ -1099,6 +1109,7 @@ const DisputePanel = ({
           <textarea
             value={disputeDraft}
             onChange={(event) => setDisputeDraft(event.target.value)}
+            aria-label="Dispute reason"
             placeholder="State the procurement covenant violation or evidence mismatch."
             rows={4}
             style={{
