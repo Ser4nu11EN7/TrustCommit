@@ -120,6 +120,8 @@ export function ConsolePage() {
   const [actionMessage, setActionMessage] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
+  const [disputeDraft, setDisputeDraft] = useState('');
+  const [disputeComposeOpen, setDisputeComposeOpen] = useState(false);
 
   useEffect(() => {
     const styleEl = document.createElement('style');
@@ -323,6 +325,11 @@ export function ConsolePage() {
     ...(error ? [{ time: '[ERROR]', msg: error, type: 'error' }] : [])
   ].slice(0, 14);
 
+  const canRun = selectedTask?.status === 'created' || selectedTask?.status === 'running';
+  const canFinalize = selectedTask?.status === 'submitted' && !details?.disputeRecord;
+  const canDispute = selectedTask?.status === 'submitted' && !details?.disputeRecord;
+  const canArbitrate = selectedTask?.status === 'disputed';
+
   async function reloadConsole(preferredTaskId = selectedCovenant) {
     const [manifestResponse, tasksResponse, healthResponse] = await Promise.all([
       fetchJson('/agent/manifest'),
@@ -360,19 +367,12 @@ export function ConsolePage() {
     }
   }
 
-  async function handleTaskAction(action) {
+  async function handleTaskAction(action, options = {}) {
     if (!selectedTask?.id) {
       return;
     }
 
-    let body = {};
-    if (action === 'dispute') {
-      const reason = window.prompt('Dispute reason');
-      if (!reason) {
-        return;
-      }
-      body = { reason };
-    }
+    const body = options;
 
     setActionLoading(action);
     setActionError(null);
@@ -393,6 +393,10 @@ export function ConsolePage() {
       } else {
         await postJson(`/tasks/${selectedTask.id}/${action}`, body);
         setActionMessage(`${action} committed`);
+        if (action === 'dispute') {
+          setDisputeDraft('');
+          setDisputeComposeOpen(false);
+        }
         await reloadConsole(selectedTask.id);
         setRefreshNonce((value) => value + 1);
       }
@@ -401,6 +405,23 @@ export function ConsolePage() {
     } finally {
       setActionLoading(null);
     }
+  }
+
+  function actionLinkStyle(disabled = false) {
+    return {
+      fontFamily: "'JetBrains Mono', monospace",
+      fontSize: '0.62rem',
+      color: disabled ? '#525252' : '#ffffff',
+      textTransform: 'uppercase',
+      letterSpacing: '0.18em',
+      background: 'none',
+      border: 'none',
+      padding: 0,
+      cursor: disabled ? 'not-allowed' : 'pointer',
+      marginTop: '0.4rem',
+      textDecoration: disabled ? 'none' : 'underline',
+      textUnderlineOffset: '0.18rem',
+    };
   }
 
   return (
@@ -621,6 +642,9 @@ export function ConsolePage() {
                     <span>Provider: <span style={{ color: '#ffffff' }}>{latestRun?.provider ?? 'pending'}</span></span>
                     <span>Model: {latestRun?.model ?? 'waiting'}</span>
                   </div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.62rem', color: '#737373', marginTop: '0.35rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    Validator: {selectedLog?.verification?.profile ?? 'unassigned'}
+                  </div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', paddingLeft: '2rem', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
@@ -630,6 +654,9 @@ export function ConsolePage() {
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.875rem', color: '#ffffff', marginBottom: '0.25rem' }}>{selectedTask?.createdBy?.toUpperCase() ?? 'UNASSIGNED'}</div>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#a3a3a3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '12rem' }} title={manifest?.operator?.address ?? ''}>
                     {manifest?.operator?.address ?? 'No operator wallet'}
+                  </div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.62rem', color: '#737373', marginTop: '0.35rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '12rem' }}>
+                    Profile: {selectedLog?.task?.commitmentProfile ?? 'unassigned'}
                   </div>
                 </div>
               </div>
@@ -770,6 +797,16 @@ export function ConsolePage() {
                   <div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', marginBottom: '0.25rem' }}>Covenant Created</div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252' }}>{details?.receiptRecord?.receipts?.createTxHash ? `Confirmed ${shortHash(details.receiptRecord.receipts.createTxHash)}` : 'Awaiting create receipt'}</div>
+                    {canRun ? (
+                      <button
+                        type="button"
+                        disabled={actionLoading === 'run'}
+                        onClick={() => handleTaskAction('run')}
+                        style={actionLinkStyle(actionLoading === 'run')}
+                      >
+                        {actionLoading === 'run' ? 'Executing...' : 'Execute Covenant'}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
 
@@ -784,6 +821,16 @@ export function ConsolePage() {
                       {details?.disputeRecord ? details.disputeRecord.reason : details?.receiptRecord?.receipts?.submitTxHash ? `Submitted ${shortHash(details.receiptRecord.receipts.submitTxHash)}` : 'Awaiting proof submission'}<br />
                       Checks: <span style={{ color: '#ffffff' }}>{selectedLog?.verification?.validatorResults?.length ?? 0} validators</span>
                     </div>
+                    {!details?.disputeRecord ? (
+                      <button
+                        type="button"
+                        disabled={actionLoading === 'verify'}
+                        onClick={() => handleTaskAction('verify')}
+                        style={actionLinkStyle(actionLoading === 'verify')}
+                      >
+                        {actionLoading === 'verify' ? 'Verifying...' : 'Run Verifier'}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
 
@@ -793,6 +840,16 @@ export function ConsolePage() {
                   <div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3', marginBottom: '0.25rem' }}>{details?.resolutionRecord ? 'Resolved' : 'Settlement & Payout'}</div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252' }}>{details?.resolutionRecord ? `${details.resolutionRecord.outcome} ${shortHash(details.resolutionRecord.txHash)}` : details?.receiptRecord?.receipts?.finalizeTxHash ? `Settled ${shortHash(details.receiptRecord.receipts.finalizeTxHash)}` : 'Awaiting settlement'}</div>
+                    {canFinalize ? (
+                      <button
+                        type="button"
+                        disabled={actionLoading === 'finalize'}
+                        onClick={() => handleTaskAction('finalize')}
+                        style={actionLinkStyle(actionLoading === 'finalize')}
+                      >
+                        {actionLoading === 'finalize' ? 'Finalizing...' : 'Finalize Payout'}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -803,8 +860,12 @@ export function ConsolePage() {
               taskStatus={selectedTask?.status}
               disputeRecord={details?.disputeRecord}
               resolutionRecord={details?.resolutionRecord}
+              disputeDraft={disputeDraft}
+              setDisputeDraft={setDisputeDraft}
+              disputeComposeOpen={disputeComposeOpen}
+              setDisputeComposeOpen={setDisputeComposeOpen}
               busy={actionLoading === 'dispute' || actionLoading === 'arbiter'}
-              onDispute={() => handleTaskAction('dispute')}
+              onDispute={(reason) => handleTaskAction('dispute', { reason })}
               onArbiter={() => handleTaskAction('arbiter')}
               onRefresh={() => setRefreshNonce((value) => value + 1)}
             />
@@ -843,7 +904,19 @@ const ArtifactCard = ({ artifact }) => {
   );
 };
 
-const DisputePanel = ({ taskStatus, disputeRecord, resolutionRecord, busy, onDispute, onArbiter, onRefresh }) => {
+const DisputePanel = ({
+  taskStatus,
+  disputeRecord,
+  resolutionRecord,
+  disputeDraft,
+  setDisputeDraft,
+  disputeComposeOpen,
+  setDisputeComposeOpen,
+  busy,
+  onDispute,
+  onArbiter,
+  onRefresh
+}) => {
   const [hovered, setHovered] = useState(false);
   const ctaLabel = resolutionRecord
     ? 'Refresh Covenant State'
@@ -863,7 +936,7 @@ const DisputePanel = ({ taskStatus, disputeRecord, resolutionRecord, busy, onDis
       return;
     }
     if (taskStatus === 'submitted') {
-      onDispute();
+      setDisputeComposeOpen((value) => !value);
       return;
     }
     onRefresh();
@@ -884,6 +957,66 @@ const DisputePanel = ({ taskStatus, disputeRecord, resolutionRecord, busy, onDis
           </p>
         </div>
       </div>
+
+      {taskStatus === 'submitted' && !disputeRecord && !resolutionRecord && disputeComposeOpen ? (
+        <div style={{ marginBottom: '1rem', display: 'grid', gap: '0.5rem' }}>
+          <textarea
+            value={disputeDraft}
+            onChange={(event) => setDisputeDraft(event.target.value)}
+            placeholder="State the covenant violation or evidence mismatch."
+            rows={4}
+            style={{
+              resize: 'vertical',
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              color: '#ffffff',
+              padding: '0.75rem',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '0.65rem',
+              lineHeight: '1.6'
+            }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
+            <button
+              type="button"
+              onClick={() => setDisputeComposeOpen(false)}
+              style={{
+                flex: 1,
+                padding: '0.75rem',
+                border: '1px solid rgba(255,255,255,0.12)',
+                backgroundColor: 'transparent',
+                color: '#a3a3a3',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '0.7rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.18em',
+                cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={busy || !disputeDraft.trim()}
+              onClick={() => onDispute(disputeDraft.trim())}
+              style={{
+                flex: 1,
+                padding: '0.75rem',
+                border: '1px solid rgba(255,255,255,0.5)',
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                color: busy || !disputeDraft.trim() ? '#525252' : '#ffffff',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '0.7rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.18em',
+                cursor: busy || !disputeDraft.trim() ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {busy ? 'Submitting...' : 'Submit Dispute'}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <button
         type="button"
@@ -907,7 +1040,9 @@ const DisputePanel = ({ taskStatus, disputeRecord, resolutionRecord, busy, onDis
           transition: 'all 0.2s',
         }}
       >
-        <span style={{ position: 'relative', zIndex: 10 }}>{busy ? 'Processing...' : ctaLabel}</span>
+        <span style={{ position: 'relative', zIndex: 10 }}>
+          {busy ? 'Processing...' : ctaLabel}
+        </span>
       </button>
     </div>
   );
