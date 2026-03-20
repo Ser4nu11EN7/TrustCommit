@@ -122,6 +122,7 @@ export function ConsolePage() {
   const [actionLoading, setActionLoading] = useState(null);
   const [disputeDraft, setDisputeDraft] = useState('');
   const [disputeComposeOpen, setDisputeComposeOpen] = useState(false);
+  const [selectedArtifactKey, setSelectedArtifactKey] = useState(null);
 
   useEffect(() => {
     const styleEl = document.createElement('style');
@@ -276,6 +277,10 @@ export function ConsolePage() {
     };
   }, [selectedCovenant, refreshNonce]);
 
+  useEffect(() => {
+    setSelectedArtifactKey(null);
+  }, [selectedCovenant]);
+
   const navItems = ['Covenants', 'Registry', 'Disputes', 'Staking'];
 
   const filteredTasks = useMemo(() => {
@@ -327,8 +332,105 @@ export function ConsolePage() {
 
   const canRun = selectedTask?.status === 'created' || selectedTask?.status === 'running';
   const canFinalize = selectedTask?.status === 'submitted' && !details?.disputeRecord;
-  const canDispute = selectedTask?.status === 'submitted' && !details?.disputeRecord;
-  const canArbitrate = selectedTask?.status === 'disputed';
+
+  const artifactEntries = [
+    ...(details?.proofBundle
+      ? [{
+          key: 'proof_bundle',
+          type: 'PFB',
+          name: 'proof_bundle.json',
+          size: 'signed',
+          hash: shortHash(details.proofBundle.proofHash, 6),
+          previewTitle: 'Signed Proof Bundle',
+          previewLines: [
+            `Signer ${shortHash(details.proofBundle.operatorAttestation?.signer, 6)}`,
+            `Execution trace ${shortHash(details.proofBundle.executionTraceHash, 6)}`,
+            `Receipt head ${shortHash(details.proofBundle.receiptHead, 6)}`,
+          ],
+        }]
+      : []),
+    ...(details?.artifact
+      ? [{
+          key: 'artifact',
+          type: 'ART',
+          name: 'artifact.json',
+          size: `${inspectedFiles.length} refs`,
+          hash: shortHash(details.task?.proofHash, 6),
+          previewTitle: selectedArtifact?.taskTitle ?? selectedTask?.title ?? 'Artifact Output',
+          previewLines: [
+            selectedArtifact?.summary ?? 'No structured summary recorded.',
+            ...(selectedArtifact?.notes ?? []).slice(0, 2),
+            ...(selectedArtifact?.filesToModify ?? []).slice(0, 2).map((entry) => `File ${entry}`),
+            ...(selectedArtifact?.acceptanceChecks ?? []).slice(0, 2).map((entry) => `Check ${entry}`),
+          ].filter(Boolean),
+        }]
+      : []),
+    ...(details?.receiptRecord
+      ? [{
+          key: 'receipt_record',
+          type: 'RCP',
+          name: 'receipt_record.json',
+          size: 'append-only',
+          hash: shortHash(details.receiptRecord.headHash, 6),
+          previewTitle: 'Receipt Chain',
+          previewLines: [
+            `Events ${details.receiptRecord.eventCount}`,
+            `Create ${shortHash(details.receiptRecord.receipts.createTxHash, 6)}`,
+            `Accept ${shortHash(details.receiptRecord.receipts.acceptTxHash, 6)}`,
+            details.receiptRecord.receipts.submitTxHash ? `Submit ${shortHash(details.receiptRecord.receipts.submitTxHash, 6)}` : 'Submit pending',
+            details.receiptRecord.receipts.finalizeTxHash ? `Finalize ${shortHash(details.receiptRecord.receipts.finalizeTxHash, 6)}` : 'Finalize pending',
+          ],
+        }]
+      : []),
+    ...(details?.agentLog
+      ? [{
+          key: 'agent_log',
+          type: 'LOG',
+          name: 'agent_log.json',
+          size: `${details.agentLog.steps.length} steps`,
+          hash: shortHash(details.receiptRecord?.proofHash, 6),
+          previewTitle: 'Execution Log',
+          previewLines: [
+            details.agentLog.plan.summary,
+            `Budget ${details.agentLog.budget.attemptsUsed}/${details.agentLog.budget.attemptsAllowed} attempts`,
+            `Model calls ${details.agentLog.budget.modelCalls}`,
+            `Guardrails ${details.agentLog.guardrails.preExecution.length + details.agentLog.guardrails.duringExecution.length + details.agentLog.guardrails.preCommit.length}`,
+          ].filter(Boolean),
+        }]
+      : []),
+    ...(details?.disputeRecord
+      ? [{
+          key: 'dispute',
+          type: 'DSP',
+          name: 'dispute.json',
+          size: 'challenge',
+          hash: shortHash(details.disputeRecord.evidenceHash, 6),
+          previewTitle: 'Dispute Record',
+          previewLines: [
+            details.disputeRecord.reason,
+            `Tx ${shortHash(details.disputeRecord.txHash, 6)}`,
+          ],
+        }]
+      : []),
+    ...(details?.resolutionRecord
+      ? [{
+          key: 'resolution',
+          type: 'RSL',
+          name: 'resolution.json',
+          size: details.resolutionRecord.outcome,
+          hash: shortHash(details.resolutionRecord.resolutionHash, 6),
+          previewTitle: 'Resolution Record',
+          previewLines: [
+            `Winner ${details.resolutionRecord.winner}`,
+            details.resolutionRecord.reason,
+            `Tx ${shortHash(details.resolutionRecord.txHash, 6)}`,
+          ],
+        }]
+      : []),
+  ];
+
+  const selectedArtifactEntry =
+    artifactEntries.find((entry) => entry.key === selectedArtifactKey) ?? artifactEntries[0] ?? null;
 
   async function reloadConsole(preferredTaskId = selectedCovenant) {
     const [manifestResponse, tasksResponse, healthResponse] = await Promise.all([
@@ -686,7 +788,7 @@ export function ConsolePage() {
             {/* Artifacts */}
             <div style={{ height: '12rem', borderTop: '1px solid rgba(255,255,255,0.08)', backgroundColor: '#000000', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
               <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Execution Artifacts ({(details?.proofBundle ? 1 : 0) + (details?.artifact ? 1 : 0) + (details?.receiptRecord ? 1 : 0) + (details?.agentLog ? 1 : 0)})</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Execution Artifacts ({artifactEntries.length})</span>
                 <button
                   type="button"
                   onClick={() => handleTaskAction('export')}
@@ -698,15 +800,48 @@ export function ConsolePage() {
                   {actionLoading === 'export' ? 'Exporting...' : 'Export Bundle'}
                 </button>
               </div>
-              <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', height: '100%', overflowY: 'auto' }}>
-                {[
-                  ...(details?.proofBundle ? [{ type: 'JSON', name: 'proof_bundle.json', size: 'signed', hash: shortHash(details.proofBundle.proofHash, 6) }] : []),
-                  ...(details?.artifact ? [{ type: 'ART', name: 'artifact.json', size: `${inspectedFiles.length} refs`, hash: shortHash(details.task?.proofHash, 6) }] : []),
-                  ...(details?.receiptRecord ? [{ type: 'RCP', name: 'receipt_record.json', size: 'append-only', hash: shortHash(details.receiptRecord.headHash, 6) }] : []),
-                  ...(details?.agentLog ? [{ type: 'LOG', name: 'agent_log.json', size: `${details.agentLog.steps.length} steps`, hash: shortHash(details.receiptRecord?.proofHash, 6) }] : [])
-                ].map((artifact, i) => (
-                  <ArtifactCard key={i} artifact={artifact} />
-                ))}
+              <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '1rem', height: '100%', overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', overflowY: 'auto', alignContent: 'start' }}>
+                  {artifactEntries.map((artifact) => (
+                    <ArtifactCard
+                      key={artifact.key}
+                      artifact={artifact}
+                      selected={selectedArtifactEntry?.key === artifact.key}
+                      onSelect={() => setSelectedArtifactKey(artifact.key)}
+                    />
+                  ))}
+                </div>
+                <div style={{ border: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.03)', padding: '0.75rem', overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.6rem' }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.18em' }}>
+                      Artifact Inspection
+                    </div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.62rem', color: '#ffffff' }}>
+                      {selectedArtifactEntry?.type ?? '—'}
+                    </div>
+                  </div>
+                  {selectedArtifactEntry ? (
+                    <>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.72rem', color: '#ffffff', marginBottom: '0.5rem' }}>
+                        {selectedArtifactEntry.previewTitle}
+                      </div>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.62rem', color: '#525252', marginBottom: '0.75rem' }}>
+                        {selectedArtifactEntry.name} / {selectedArtifactEntry.hash}
+                      </div>
+                      <div style={{ display: 'grid', gap: '0.45rem' }}>
+                        {selectedArtifactEntry.previewLines.slice(0, 6).map((line, index) => (
+                          <div key={index} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.63rem', color: '#a3a3a3', lineHeight: '1.6' }}>
+                            {line}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.63rem', color: '#525252', lineHeight: '1.6' }}>
+                      No artifact has been emitted for this covenant yet.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </section>
@@ -875,20 +1010,21 @@ export function ConsolePage() {
   );
 };
 
-const ArtifactCard = ({ artifact }) => {
+const ArtifactCard = ({ artifact, selected, onSelect }) => {
   const [hovered, setHovered] = useState(false);
   return (
     <div
+      onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        border: '1px solid rgba(255,255,255,0.08)',
+        border: selected ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(255,255,255,0.08)',
         padding: '0.75rem',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
         cursor: 'pointer',
-        backgroundColor: hovered ? '#ffffff' : 'rgba(255,255,255,0.05)',
+        backgroundColor: hovered ? '#ffffff' : selected ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
         transition: 'all 0.2s',
       }}
     >
