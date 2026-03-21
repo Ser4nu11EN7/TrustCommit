@@ -234,7 +234,7 @@ program
 
 program
   .command("server:start")
-  .option("--port <port>", "HTTP port", "3000")
+  .option("--port <port>", "HTTP port", process.env.PORT ?? "3000")
   .action(async (options) => {
     const { url } = await startHttpServer(Number(options.port));
     console.log(`TrustCommit HTTP API listening on ${url}`);

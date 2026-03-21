@@ -94,6 +94,12 @@ export async function startHttpServer(port = Number(process.env.PORT ?? 3000), h
     try {
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", `http://${host}:${port}`);
+      const pathname =
+        url.pathname === "/api"
+          ? "/"
+          : url.pathname.startsWith("/api/")
+            ? url.pathname.slice(4)
+            : url.pathname;
 
       if (method === "OPTIONS") {
         response.writeHead(204, {
@@ -105,7 +111,7 @@ export async function startHttpServer(port = Number(process.env.PORT ?? 3000), h
         return;
       }
 
-      if (method === "GET" && url.pathname === "/health") {
+      if (method === "GET" && pathname === "/health") {
         const health = await runtime.getProviderHealth(url.searchParams.get("refresh") === "1");
         jsonResponse(response, 200, {
           ok: true,
@@ -116,7 +122,7 @@ export async function startHttpServer(port = Number(process.env.PORT ?? 3000), h
         return;
       }
 
-      if (method === "GET" && url.pathname === "/agent/manifest") {
+      if (method === "GET" && pathname === "/agent/manifest") {
         jsonResponse(response, 200, {
           ok: true,
           manifest: runtime.getAgentManifest()
@@ -124,7 +130,7 @@ export async function startHttpServer(port = Number(process.env.PORT ?? 3000), h
         return;
       }
 
-      if (method === "GET" && url.pathname === "/tasks") {
+      if (method === "GET" && pathname === "/tasks") {
         jsonResponse(response, 200, {
           ok: true,
           tasks: runtime.listTasks()
@@ -132,7 +138,7 @@ export async function startHttpServer(port = Number(process.env.PORT ?? 3000), h
         return;
       }
 
-      const taskId = routeTaskId(url.pathname);
+      const taskId = routeTaskId(pathname);
       if (method === "GET" && taskId) {
         const details = runtime.getTaskDetails(taskId);
         if (!details) {
@@ -143,28 +149,28 @@ export async function startHttpServer(port = Number(process.env.PORT ?? 3000), h
         return;
       }
 
-      if (method === "POST" && url.pathname === "/tasks") {
+      if (method === "POST" && pathname === "/tasks") {
         const body = await readJsonBody(request);
         const task = await runtime.createTask(parseTaskSpec(body));
         jsonResponse(response, 201, { ok: true, task });
         return;
       }
 
-      const runTaskId = routeTaskAction(url.pathname, "run");
+      const runTaskId = routeTaskAction(pathname, "run");
       if (method === "POST" && runTaskId) {
         const task = await runtime.runTask(runTaskId);
         jsonResponse(response, 200, { ok: true, task });
         return;
       }
 
-      const verifyTaskId = routeTaskAction(url.pathname, "verify");
+      const verifyTaskId = routeTaskAction(pathname, "verify");
       if (method === "GET" && verifyTaskId) {
         const report = await runtime.verifyTask(verifyTaskId);
         jsonResponse(response, 200, { ok: true, report });
         return;
       }
 
-      const exportTaskId = routeTaskAction(url.pathname, "export");
+      const exportTaskId = routeTaskAction(pathname, "export");
       if (method === "POST" && exportTaskId) {
         const body = await readJsonBody(request);
         const out = typeof body.out === "string" ? body.out : undefined;
@@ -173,14 +179,14 @@ export async function startHttpServer(port = Number(process.env.PORT ?? 3000), h
         return;
       }
 
-      const finalizeTaskId = routeTaskAction(url.pathname, "finalize");
+      const finalizeTaskId = routeTaskAction(pathname, "finalize");
       if (method === "POST" && finalizeTaskId) {
         const task = await runtime.finalizeTask(finalizeTaskId);
         jsonResponse(response, 200, { ok: true, task });
         return;
       }
 
-      const disputeTaskId = routeTaskAction(url.pathname, "dispute");
+      const disputeTaskId = routeTaskAction(pathname, "dispute");
       if (method === "POST" && disputeTaskId) {
         const body = await readJsonBody(request);
         const reason = typeof body.reason === "string" ? body.reason : "";
@@ -192,7 +198,7 @@ export async function startHttpServer(port = Number(process.env.PORT ?? 3000), h
         return;
       }
 
-      const arbiterTaskId = routeTaskAction(url.pathname, "arbiter");
+      const arbiterTaskId = routeTaskAction(pathname, "arbiter");
       if (method === "POST" && arbiterTaskId) {
         const body = await readJsonBody(request);
         if (body.mode === "auto") {
