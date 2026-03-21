@@ -13,3 +13,11 @@ server3101.out.log
 server3101.err.log
 frontend/vite.out.log
 frontend/vite.err.log
+old_console*.tsx
+console_*.tsx
+current_console.tsx
+earlier_version.tsx
+console_history.txt
+full_log.txt
+git_diff_*.txt
+git_log_*.txt

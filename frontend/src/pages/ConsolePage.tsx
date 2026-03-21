@@ -510,37 +510,133 @@ export function ConsolePage() {
     }
     return { key: 'refresh', label: '刷新状态', note: '同步最新链上状态' };
   })();
+  const reviewStageLabel = (() => {
+    if (details?.disputeRecord || selectedTask?.status === 'disputed') {
+      return '争议处理中';
+    }
+    if (selectedTask?.status === 'slashed') {
+      return '争议成立';
+    }
+    if (verification?.status === 'flagged') {
+      return '待复核';
+    }
+    if (verification?.status === 'verified') {
+      return '复核通过';
+    }
+    if (selectedTask?.status === 'completed') {
+      return '复核完成';
+    }
+    if (selectedTask?.status === 'submitted') {
+      return '复核中';
+    }
+    return '复核阶段';
+  })();
+  const reviewStageDetail = (() => {
+    if (details?.disputeRecord?.txHash) {
+      return shortHash(details.disputeRecord.txHash);
+    }
+    if (details?.resolutionRecord?.txHash && (selectedTask?.status === 'slashed' || selectedTask?.status === 'completed')) {
+      return shortHash(details.resolutionRecord.txHash);
+    }
+    if (verification?.status === 'flagged') {
+      return verification?.summary?.total
+        ? `${verification.summary.passed}/${verification.summary.total} 异常`
+        : '存在异常项';
+    }
+    if (verification?.status === 'verified') {
+      return verification?.summary?.total
+        ? `${verification.summary.passed}/${verification.summary.total} 通过`
+        : '检查已完成';
+    }
+    if (selectedTask?.status === 'submitted') {
+      return '等待检查';
+    }
+    return '待进入';
+  })();
   const sequenceSteps = [
     {
       key: 'ready',
       label: '契约就绪',
       detail: details?.receiptRecord?.receipts?.createTxHash ? shortHash(details.receiptRecord.receipts.createTxHash) : '等待记录',
-      active: selectedTask?.status === 'created' || selectedTask?.status === 'running',
-      complete: Boolean(details?.receiptRecord?.receipts?.createTxHash),
+      active: selectedTask?.status === 'created',
+      complete: Boolean(details?.receiptRecord?.receipts?.createTxHash || selectedTask?.status && selectedTask?.status !== 'draft'),
+    },
+    {
+      key: 'running',
+      label: '执行中',
+      detail: selectedTask?.status === 'running'
+        ? '代理执行中'
+        : details?.proofBundle?.executionTraceHash
+          ? shortHash(details.proofBundle.executionTraceHash)
+          : latestRun
+            ? `${selectedLog?.steps?.length ?? 0} 步轨迹`
+            : '等待运行',
+      active: selectedTask?.status === 'running',
+      complete: ['submitted', 'disputed', 'completed', 'slashed'].includes(selectedTask?.status ?? ''),
     },
     {
       key: 'submitted',
-      label: details?.disputeRecord ? '争议审查中' : '证明已提交',
+      label: '证明已提交',
       detail: details?.receiptRecord?.receipts?.submitTxHash
         ? shortHash(details.receiptRecord.receipts.submitTxHash)
-        : details?.disputeRecord
-          ? '争议已开启'
+        : selectedTask?.status === 'submitted'
+          ? '等待上链'
           : '等待提交',
-      active: selectedTask?.status === 'submitted' || Boolean(details?.disputeRecord),
-      complete: Boolean(details?.receiptRecord?.receipts?.submitTxHash),
+      active: selectedTask?.status === 'submitted' && !verification?.status && !details?.disputeRecord && !details?.resolutionRecord,
+      complete: Boolean(
+        details?.receiptRecord?.receipts?.submitTxHash
+        || ['submitted', 'disputed', 'completed', 'slashed'].includes(selectedTask?.status ?? '')
+      ),
+    },
+    {
+      key: 'review',
+      label: reviewStageLabel,
+      detail: reviewStageDetail,
+      active: Boolean(
+        details?.disputeRecord
+        || selectedTask?.status === 'disputed'
+        || (selectedTask?.status === 'submitted' && verification?.status)
+      ) && !details?.resolutionRecord && selectedTask?.status !== 'completed' && selectedTask?.status !== 'slashed',
+      complete: Boolean(
+        details?.disputeRecord
+        || details?.resolutionRecord
+        || selectedTask?.status === 'completed'
+        || selectedTask?.status === 'slashed'
+        || verification?.status === 'verified'
+      ),
     },
     {
       key: 'settlement',
-      label: details?.resolutionRecord ? '裁决结果' : '结算窗口',
+      label: details?.resolutionRecord
+        ? details.resolutionRecord.outcome === 'slashed'
+          ? '惩罚执行'
+          : '结算完成'
+        : selectedTask?.status === 'slashed'
+          ? '惩罚执行'
+          : selectedTask?.status === 'completed'
+            ? '结算完成'
+            : '结算窗口',
       detail: details?.resolutionRecord
         ? shortHash(details.resolutionRecord.txHash)
         : details?.receiptRecord?.receipts?.finalizeTxHash
           ? shortHash(details.receiptRecord.receipts.finalizeTxHash)
           : '等待结算',
-      active: Boolean(details?.resolutionRecord) || selectedTask?.status === 'completed' || selectedTask?.status === 'slashed',
+      active: Boolean(details?.resolutionRecord)
+        || selectedTask?.status === 'completed'
+        || selectedTask?.status === 'slashed'
+        || (selectedTask?.status === 'submitted' && verification?.status === 'verified' && !details?.disputeRecord),
       complete: Boolean(details?.resolutionRecord || details?.receiptRecord?.receipts?.finalizeTxHash),
     },
   ];
+  const sequenceCenters = sequenceSteps.map((_, index) => ((index + 0.5) / sequenceSteps.length) * 100);
+  const sequenceTrackStart = sequenceCenters[0] ?? 0;
+  const sequenceTrackEnd = sequenceCenters[sequenceCenters.length - 1] ?? 100;
+  const sequenceSegments = sequenceSteps.slice(0, -1).map((step, index) => ({
+    key: `${step.key}-segment`,
+    left: sequenceCenters[index],
+    width: (sequenceCenters[index + 1] ?? sequenceCenters[index]) - sequenceCenters[index],
+    complete: step.complete,
+  }));
 
   const artifactEntries = [
     ...(details?.proofBundle
@@ -776,32 +872,44 @@ export function ConsolePage() {
     return {
       fontFamily: "'JetBrains Mono', monospace",
       fontSize: '0.62rem',
-      color: disabled ? '#525252' : '#ffffff',
+      color: disabled ? '#525252' : '#d4d4d4',
       textTransform: 'uppercase',
       letterSpacing: '0.14em',
-      background: 'none',
-      border: 'none',
-      padding: 0,
+      backgroundColor: disabled ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)',
+      border: `1px solid ${disabled ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.14)'}`,
+      padding: '0.36rem 0.55rem',
       cursor: disabled ? 'not-allowed' : 'pointer',
-      textDecoration: disabled ? 'none' : 'underline',
-      textUnderlineOffset: '0.16rem',
+      lineHeight: 1,
+      whiteSpace: 'nowrap',
+      transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
     };
   }
 
-  function actionLinkStyle(disabled = false) {
+  function actionLinkStyle(disabled = false, emphasis = 'normal') {
+    const isStrong = emphasis === 'strong' && !disabled;
     return {
       fontFamily: "'JetBrains Mono', monospace",
       fontSize: '0.62rem',
-      color: disabled ? '#525252' : '#ffffff',
+      color: disabled ? '#525252' : isStrong ? '#ffffff' : '#d4d4d4',
       textTransform: 'uppercase',
       letterSpacing: '0.18em',
-      background: 'none',
-      border: 'none',
-      padding: 0,
+      backgroundColor: disabled
+        ? 'rgba(255,255,255,0.02)'
+        : isStrong
+          ? 'rgba(255,255,255,0.08)'
+          : 'rgba(255,255,255,0.04)',
+      border: `1px solid ${
+        disabled
+          ? 'rgba(255,255,255,0.06)'
+          : isStrong
+            ? 'rgba(255,255,255,0.22)'
+            : 'rgba(255,255,255,0.14)'
+      }`,
+      padding: '0.42rem 0.62rem',
       cursor: disabled ? 'not-allowed' : 'pointer',
-      marginTop: '0.4rem',
-      textDecoration: disabled ? 'none' : 'underline',
-      textUnderlineOffset: '0.18rem',
+      lineHeight: 1,
+      whiteSpace: 'nowrap',
+      transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
     };
   }
 
@@ -1226,7 +1334,33 @@ export function ConsolePage() {
                   {detailsLoading ? '正在同步状态...' : selectedTask ? `${selectedTaskSequence} · 奖励 ${formatToken(selectedTask.reward)} USDC` : '未选择任务'}
                 </span>
               </div>
-              <h1 style={{ fontSize: '1.875rem', fontWeight: 300, color: '#ffffff', letterSpacing: '-0.025em', marginTop: '0.5rem', marginBottom: '1rem' }}>{selectedTask?.title ?? 'TrustCommit 控制台'}</h1>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                <h1 style={{ fontSize: '1.875rem', fontWeight: 300, color: '#ffffff', letterSpacing: '-0.025em', margin: 0, minWidth: 0 }}>
+                  {selectedTask?.title ?? 'TrustCommit 控制台'}
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => setRefreshNonce((value) => value + 1)}
+                  disabled={runtimeOffline || detailsLoading || !selectedTask}
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '0.64rem',
+                    color: runtimeOffline || detailsLoading || !selectedTask ? '#525252' : '#d4d4d4',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.18em',
+                    backgroundColor: runtimeOffline || detailsLoading || !selectedTask ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${runtimeOffline || detailsLoading || !selectedTask ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.14)'}`,
+                    padding: '0.45rem 0.65rem',
+                    cursor: runtimeOffline || detailsLoading || !selectedTask ? 'not-allowed' : 'pointer',
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
+                    lineHeight: 1,
+                    transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
+                  }}
+                >
+                  {detailsLoading ? '同步中...' : '刷新契约状态'}
+                </button>
+              </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
@@ -1250,9 +1384,31 @@ export function ConsolePage() {
 
             <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'grid', gap: '1rem' }}>
               <div style={{ position: 'relative', display: 'flex', width: '100%', marginBottom: '0.5rem' }}>
-                <div style={{ position: 'absolute', left: '16.66%', right: '16.66%', top: '0.45rem', height: '1px', backgroundColor: 'rgba(255,255,255,0.08)', zIndex: 0 }} />
-                <div style={{ position: 'absolute', left: '16.66%', width: '33.33%', top: '0.45rem', height: '1px', backgroundColor: sequenceSteps[0]?.complete ? '#ffffff' : 'transparent', zIndex: 0 }} />
-                <div style={{ position: 'absolute', left: '50%', width: '33.33%', top: '0.45rem', height: '1px', backgroundColor: sequenceSteps[1]?.complete ? '#ffffff' : 'transparent', zIndex: 0 }} />
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${sequenceTrackStart}%`,
+                    right: `${100 - sequenceTrackEnd}%`,
+                    top: '0.45rem',
+                    height: '1px',
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    zIndex: 0
+                  }}
+                />
+                {sequenceSegments.map((segment) => (
+                  <div
+                    key={segment.key}
+                    style={{
+                      position: 'absolute',
+                      left: `${segment.left}%`,
+                      width: `${segment.width}%`,
+                      top: '0.45rem',
+                      height: '1px',
+                      backgroundColor: segment.complete ? '#ffffff' : 'transparent',
+                      zIndex: 0
+                    }}
+                  />
+                ))}
                 {sequenceSteps.map((step) => (
                   <div key={step.key} style={{ flex: 1, position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <div style={{ width: '1rem', height: '1rem', borderRadius: '9999px', backgroundColor: '#000000', border: `1px solid ${step.active || step.complete ? '#ffffff' : 'rgba(255,255,255,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
@@ -1270,72 +1426,174 @@ export function ConsolePage() {
                 ))}
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-                <button
-                  type="button"
-                  onClick={handlePrimaryOperation}
-                  disabled={runtimeOffline || actionLoading === nextOperation?.key || !nextOperation}
-                  style={{
-                    flex: 1,
-                    padding: '0.9rem 1rem',
-                    border: '1px solid rgba(255,255,255,0.24)',
-                    backgroundColor: 'rgba(255,255,255,0.08)',
-                    color: runtimeOffline || actionLoading === nextOperation?.key || !nextOperation ? '#666666' : '#ffffff',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '0.68rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.18em',
-                    cursor: runtimeOffline || actionLoading === nextOperation?.key || !nextOperation ? 'not-allowed' : 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-                    <span>{runtimeOffline ? '等待运行时连接' : actionLoading === nextOperation?.key ? '处理中...' : nextOperation?.label ?? '等待选择'}</span>
-                    <span style={{ color: '#a3a3a3', fontSize: '0.58rem' }}>{runtimeOffline ? '运行时离线' : nextOperation?.note ?? '等待操作'}</span>
-                  </div>
-                </button>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '0.9rem', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.16em' }}>
-                  <button type="button" onClick={() => handleTaskAction('export')} disabled={runtimeOffline || !selectedTask || actionLoading === 'export'} style={actionLinkStyle(runtimeOffline || !selectedTask || actionLoading === 'export')}>导出</button>
-                  <button type="button" onClick={() => setRefreshNonce((value) => value + 1)} style={actionLinkStyle(false)}>刷新</button>
-                  {canDispute ? (
-                    <button type="button" onClick={() => setDisputeComposeOpen((value) => !value)} disabled={runtimeOffline} style={actionLinkStyle(runtimeOffline)}>争议</button>
-                  ) : null}
-                </div>
-              </div>
-
-              {canDispute && disputeComposeOpen ? (
-                <div style={{ border: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.03)', padding: '0.85rem', display: 'grid', gap: '0.6rem' }}>
-                  <textarea
-                    value={disputeDraft}
-                    onChange={(event) => setDisputeDraft(event.target.value)}
-                    aria-label="争议理由"
-                    placeholder="写明争议理由与对应违约点。"
-                    rows={4}
+              <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid rgba(255,255,255,0.14)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                <div style={{ display: 'flex', alignItems: 'stretch', minHeight: '3rem' }}>
+                  <button
+                    type="button"
+                    onClick={handlePrimaryOperation}
+                    disabled={runtimeOffline || actionLoading === nextOperation?.key || !nextOperation}
+                    className={runtimeOffline || actionLoading === nextOperation?.key || !nextOperation ? '' : 'dither-hover'}
                     style={{
-                      resize: 'vertical',
+                      flex: 1,
+                      padding: '0 1.25rem',
+                      border: 'none',
+                      borderRight: '1px solid rgba(255,255,255,0.14)',
                       backgroundColor: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      color: '#ffffff',
-                      padding: '0.75rem',
+                      color: runtimeOffline || actionLoading === nextOperation?.key || !nextOperation ? '#666666' : '#ffffff',
                       fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: '0.65rem',
-                      lineHeight: '1.6'
+                      fontSize: '0.68rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.18em',
+                      cursor: runtimeOffline || actionLoading === nextOperation?.key || !nextOperation ? 'not-allowed' : 'pointer',
+                      textAlign: 'left',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '1rem',
+                      minWidth: 0,
+                      transition: 'all 0.2s',
                     }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                    <button type="button" onClick={() => setDisputeComposeOpen(false)} style={actionLinkStyle(false)}>取消</button>
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
+                      <span style={{ fontWeight: 500, color: runtimeOffline || actionLoading === nextOperation?.key || !nextOperation ? '#525252' : '#ffffff' }}>{'>'}</span>
+                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {runtimeOffline ? '等待运行时连接' : actionLoading === nextOperation?.key ? '处理中...' : nextOperation?.label ?? '等待选择'}
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        color: '#a3a3a3',
+                        fontSize: '0.58rem',
+                        letterSpacing: '0.04em',
+                        textTransform: 'none',
+                        lineHeight: 1.2,
+                        whiteSpace: 'nowrap',
+                        overflow: 'visible',
+                        textOverflow: 'clip',
+                        flexShrink: 0,
+                        paddingRight: '0.3rem',
+                      }}
+                    >
+                      {runtimeOffline ? '运行时离线' : nextOperation?.note ?? '等待操作'}
+                    </span>
+                  </button>
+
+                  <div style={{ display: 'flex' }}>
                     <button
                       type="button"
-                      disabled={runtimeOffline || actionLoading === 'dispute' || !disputeDraft.trim()}
-                      onClick={() => handleTaskAction('dispute', { reason: disputeDraft.trim() })}
-                      style={actionLinkStyle(runtimeOffline || actionLoading === 'dispute' || !disputeDraft.trim())}
+                      onClick={() => handleTaskAction('export')}
+                      disabled={runtimeOffline || !selectedTask || actionLoading === 'export'}
+                      className={runtimeOffline || !selectedTask || actionLoading === 'export' ? '' : 'dither-hover'}
+                      style={{
+                        padding: '0 1.25rem',
+                        border: 'none',
+                        borderRight: canDispute ? '1px solid rgba(255,255,255,0.14)' : 'none',
+                        backgroundColor: 'transparent',
+                        color: runtimeOffline || !selectedTask || actionLoading === 'export' ? '#525252' : '#d4d4d4',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: '0.62rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.16em',
+                        cursor: runtimeOffline || !selectedTask || actionLoading === 'export' ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s',
+                      }}
                     >
-                      {actionLoading === 'dispute' ? '提交中...' : '提交争议'}
+                      导出
                     </button>
+                    {canDispute ? (
+                      <button
+                        type="button"
+                        onClick={() => setDisputeComposeOpen((value) => !value)}
+                        disabled={runtimeOffline}
+                        className={runtimeOffline ? '' : 'dither-hover'}
+                        style={{
+                          padding: '0 1.25rem',
+                          border: 'none',
+                          backgroundColor: disputeComposeOpen ? '#ffffff' : 'transparent',
+                          color: disputeComposeOpen ? '#000000' : runtimeOffline ? '#525252' : '#ffffff',
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: '0.62rem',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.16em',
+                          cursor: runtimeOffline ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        {disputeComposeOpen ? '收起' : '争议'}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
-              ) : null}
+
+                {canDispute && disputeComposeOpen ? (
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.14)', backgroundColor: '#000000', display: 'flex', flexDirection: 'column' }}>
+                    <textarea
+                      value={disputeDraft}
+                      onChange={(event) => setDisputeDraft(event.target.value)}
+                      aria-label="争议理由"
+                      placeholder="写明争议理由与对应违约点。"
+                      rows={4}
+                      style={{
+                        resize: 'vertical',
+                        minHeight: '4.5rem',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        color: '#ffffff',
+                        padding: '1rem 1.25rem',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: '0.65rem',
+                        lineHeight: '1.6',
+                        outline: 'none',
+                        width: '100%',
+                      }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                      <button
+                        type="button"
+                        onClick={() => setDisputeComposeOpen(false)}
+                        className="dither-hover"
+                        style={{
+                          padding: '0.75rem 1.5rem',
+                          border: 'none',
+                          borderLeft: '1px solid rgba(255,255,255,0.14)',
+                          backgroundColor: 'transparent',
+                          color: '#a3a3a3',
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: '0.62rem',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.16em',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        取消
+                      </button>
+                      <button
+                        type="button"
+                        disabled={runtimeOffline || actionLoading === 'dispute' || !disputeDraft.trim()}
+                        onClick={() => handleTaskAction('dispute', { reason: disputeDraft.trim() })}
+                        className={runtimeOffline || actionLoading === 'dispute' || !disputeDraft.trim() ? '' : 'dither-hover'}
+                        style={{
+                          padding: '0.75rem 1.5rem',
+                          border: 'none',
+                          borderLeft: '1px solid rgba(255,255,255,0.14)',
+                          backgroundColor: runtimeOffline || actionLoading === 'dispute' || !disputeDraft.trim() ? 'transparent' : 'rgba(255,255,255,0.08)',
+                          color: runtimeOffline || actionLoading === 'dispute' || !disputeDraft.trim() ? '#525252' : '#ffffff',
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: '0.62rem',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.16em',
+                          cursor: runtimeOffline || actionLoading === 'dispute' || !disputeDraft.trim() ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.2s',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {actionLoading === 'dispute' ? '提交中...' : '提交争议'}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             {/* Artifacts */}
@@ -1343,7 +1601,7 @@ export function ConsolePage() {
               <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em' }}>交付记录</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{ display: 'flex', gap: '0.75rem', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.18em' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.18em' }}>
                     {[
                       { key: 'summary', label: '摘要' },
                       { key: 'trace', label: '执行记录' }
@@ -1353,13 +1611,14 @@ export function ConsolePage() {
                         type="button"
                         onClick={() => setMainView(view.key)}
                         style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          color: mainView === view.key ? '#ffffff' : '#666666',
+                          backgroundColor: mainView === view.key ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+                          border: `1px solid ${mainView === view.key ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.14)'}`,
+                          padding: '0.38rem 0.58rem',
+                          color: mainView === view.key ? '#ffffff' : '#d4d4d4',
                           cursor: 'pointer',
-                          textDecoration: mainView === view.key ? 'underline' : 'none',
-                          textUnderlineOffset: '0.18rem',
+                          lineHeight: 1,
+                          whiteSpace: 'nowrap',
+                          transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
                           fontFamily: "'JetBrains Mono', monospace",
                           fontSize: '0.62rem',
                           textTransform: 'uppercase',
@@ -1376,7 +1635,28 @@ export function ConsolePage() {
                     onMouseEnter={() => setDownloadHover(true)}
                     onMouseLeave={() => setDownloadHover(false)}
                     disabled={!selectedTask || actionLoading === 'export'}
-                    style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: !selectedTask ? '#525252' : '#ffffff', background: 'none', border: 'none', cursor: !selectedTask || actionLoading === 'export' ? 'not-allowed' : 'pointer', textDecoration: downloadHover ? 'underline' : 'none' }}
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '0.65rem',
+                      color: !selectedTask ? '#525252' : '#d4d4d4',
+                      backgroundColor: !selectedTask || actionLoading === 'export'
+                        ? 'rgba(255,255,255,0.02)'
+                        : downloadHover
+                          ? 'rgba(255,255,255,0.08)'
+                          : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${
+                        !selectedTask || actionLoading === 'export'
+                          ? 'rgba(255,255,255,0.06)'
+                          : downloadHover
+                            ? 'rgba(255,255,255,0.22)'
+                            : 'rgba(255,255,255,0.14)'
+                      }`,
+                      padding: '0.4rem 0.58rem',
+                      cursor: !selectedTask || actionLoading === 'export' ? 'not-allowed' : 'pointer',
+                      lineHeight: 1,
+                      whiteSpace: 'nowrap',
+                      transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease'
+                    }}
                   >
                     {actionLoading === 'export' ? '导出中...' : '导出记录'}
                   </button>
@@ -1454,8 +1734,8 @@ export function ConsolePage() {
           </section>
 
           {/* Right Sidebar */}
-          <aside style={{ width: '380px', backgroundColor: '#000000', display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative', zIndex: 10 }}>
-
+          <aside style={{ width: '380px', backgroundColor: '#000000', display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative', zIndex: 10, minHeight: 0, overflow: 'hidden' }}>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {/* Cryptographic Evidence */}
             <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 300 }}>
@@ -1581,7 +1861,7 @@ export function ConsolePage() {
             </div>
 
             {/* Consensus State */}
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', flex: 1 }}>
+            <div style={{ padding: '1.5rem 1.5rem 1.75rem 1.5rem' }}>
               <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '1rem', fontWeight: 300 }}>链上状态</h3>
               <div style={{ display: 'grid', gap: '0.8rem' }}>
                 {[
@@ -1599,16 +1879,7 @@ export function ConsolePage() {
                 ))}
               </div>
             </div>
-
-            {/* Dispute */}
-            <DisputePanel
-              taskStatus={selectedTask?.status}
-              disputeRecord={details?.disputeRecord}
-              resolutionRecord={details?.resolutionRecord}
-              busy={actionLoading === 'dispute' || actionLoading === 'arbiter'}
-              onArbiter={() => handleTaskAction('arbiter')}
-              onRefresh={() => setRefreshNonce((value) => value + 1)}
-            />
+            </div>
           </aside>
         </main>
       </div>
@@ -1641,79 +1912,6 @@ const ArtifactCard = ({ artifact, selected, onSelect }) => {
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.6rem', color: hovered ? '#000000' : '#525252' }}>{artifact.size}</span>
       </div>
       <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.6rem', color: hovered ? '#000000' : '#525252', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '0.5rem' }}>摘要: {artifact.hash}</div>
-    </div>
-  );
-};
-
-const DisputePanel = ({
-  taskStatus,
-  disputeRecord,
-  resolutionRecord,
-  busy,
-  onArbiter,
-  onRefresh
-}) => {
-  const [hovered, setHovered] = useState(false);
-  const ctaLabel = resolutionRecord
-    ? '刷新契约状态'
-    : disputeRecord
-      ? '运行 AI 仲裁'
-      : '刷新契约状态';
-
-  const handleClick = () => {
-    if (resolutionRecord) {
-      onRefresh();
-      return;
-    }
-    if (disputeRecord) {
-      onArbiter();
-      return;
-    }
-    onRefresh();
-  };
-
-  return (
-    <div style={{ padding: '1.5rem', backgroundColor: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 'auto' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1rem' }}>
-        <div style={{ width: '1rem', height: '1rem', marginTop: '0.125rem', border: '1px solid #ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.62rem', color: '#ffffff', flexShrink: 0 }}>!</div>
-        <div>
-          <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '0.25rem', fontWeight: 300 }}>争议通道</h3>
-          <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.72rem', color: '#a3a3a3', lineHeight: '1.7' }}>
-            {resolutionRecord
-              ? `已裁决：${resolutionRecord.outcome}。${resolutionRecord.reason}`
-              : disputeRecord
-                ? `${disputeRecord.reason} (${shortHash(disputeRecord.txHash)})`
-                : <>对当前提交发起争议，并写入独立的证据与裁决链。</>}
-          </p>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        onClick={handleClick}
-        disabled={busy}
-        style={{
-          width: '100%',
-          padding: '0.75rem',
-          border: `1px solid ${hovered ? '#ffffff' : 'rgba(255,255,255,0.5)'}`,
-          color: hovered ? '#000000' : '#ffffff',
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '0.78rem',
-          textTransform: 'uppercase',
-          letterSpacing: '0.2em',
-          backgroundColor: hovered ? '#ffffff' : 'rgba(255,255,255,0.05)',
-          cursor: busy ? 'wait' : 'pointer',
-          position: 'relative',
-          overflow: 'hidden',
-          transition: 'all 0.2s',
-        }}
-      >
-        <span style={{ position: 'relative', zIndex: 10 }}>
-          {busy ? '处理中...' : ctaLabel}
-        </span>
-      </button>
     </div>
   );
 };
