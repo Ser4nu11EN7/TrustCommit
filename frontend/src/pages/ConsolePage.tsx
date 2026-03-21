@@ -6,7 +6,7 @@ const API_BASE = (import.meta.env.VITE_RUNTIME_API_URL as string | undefined) ??
 async function fetchJson(path) {
   const response = await fetch(`${API_BASE}${path}`);
   if (!response.ok) {
-    throw new Error(`Request failed: ${path}`);
+    throw new Error(`请求失败：${path}`);
   }
   return response.json();
 }
@@ -21,14 +21,14 @@ async function postJson(path, body) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok === false) {
-    throw new Error(payload?.error ?? `Request failed: ${path}`);
+    throw new Error(payload?.error ?? `请求失败：${path}`);
   }
   return payload;
 }
 
 function shortHash(value, size = 4) {
   if (!value) {
-    return 'PENDING';
+    return '待生成';
   }
   return `${value.slice(0, size + 2)}...${value.slice(-4)}`;
 }
@@ -42,9 +42,18 @@ function formatToken(value) {
 
 function statusLabel(status) {
   if (!status) {
-    return 'Awaiting';
+    return '等待中';
   }
-  return status.replaceAll('_', ' ');
+  const labels = {
+    draft: '草稿',
+    created: '已创建',
+    running: '执行中',
+    submitted: '已提交',
+    completed: '已完成',
+    disputed: '争议中',
+    slashed: '已惩罚',
+  };
+  return labels[status] ?? status.replaceAll('_', ' ');
 }
 
 function statusColor(status) {
@@ -105,7 +114,7 @@ export function ConsolePage() {
   const [clock, setClock] = useState('00:00:00');
   const [activeTab, setActiveTab] = useState('active');
   const [selectedCovenant, setSelectedCovenant] = useState(null);
-  const [activeNav, setActiveNav] = useState('Covenants');
+  const [activeNav, setActiveNav] = useState('契约');
   const [downloadHover, setDownloadHover] = useState(false);
   const [health, setHealth] = useState(null);
   const [manifest, setManifest] = useState(null);
@@ -200,7 +209,7 @@ export function ConsolePage() {
         });
       } catch (loadError) {
         if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : 'Failed to load runtime state.');
+          setError(loadError instanceof Error ? loadError.message : '加载运行态失败。');
         }
       } finally {
         if (!cancelled) {
@@ -232,7 +241,7 @@ export function ConsolePage() {
       })
       .catch((loadError) => {
         if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : 'Failed to load task details');
+          setError(loadError instanceof Error ? loadError.message : '加载任务详情失败。');
         }
       })
       .finally(() => {
@@ -263,7 +272,7 @@ export function ConsolePage() {
       })
       .catch((loadError) => {
         if (!cancelled) {
-          setActionError(loadError instanceof Error ? loadError.message : 'Failed to verify task');
+          setActionError(loadError instanceof Error ? loadError.message : '验证任务失败。');
         }
       })
       .finally(() => {
@@ -283,7 +292,7 @@ export function ConsolePage() {
     setActionError(null);
   }, [selectedCovenant]);
 
-  const navItems = ['Covenants', 'Registry', 'Disputes', 'Staking'];
+  const navItems = ['契约', '注册表', '争议', '质押'];
 
   const filteredTasks = useMemo(() => {
     if (activeTab === 'active') {
@@ -315,7 +324,7 @@ export function ConsolePage() {
   }));
 
   const logEntries = [
-    ...(latestRun ? [{ time: `[${clock.slice(0, 8)}]`, msg: `Execution container booted with ${latestRun.model}.`, type: 'success' }] : []),
+    ...(latestRun ? [{ time: `[${clock.slice(0, 8)}]`, msg: `执行容器已启动，当前模型为 ${latestRun.model}。`, type: 'success' }] : []),
     ...(selectedLog ? [{ time: '[PLAN]', msg: selectedLog.plan.summary, type: 'success' }] : []),
     ...((selectedLog?.steps ?? []).slice(0, 6).map((step) => ({
       time: `[${step.type.toUpperCase()}]`,
@@ -324,7 +333,7 @@ export function ConsolePage() {
     }))),
     ...((details?.chainActions ?? []).slice(-4).map((action) => ({
       time: `[${new Date(action.createdAt).toLocaleTimeString('en-US', { hour12: false })}]`,
-      msg: `${action.action} committed onchain (${shortHash(action.txHash)})`,
+      msg: `${action.action} 已上链提交（${shortHash(action.txHash)}）`,
       type: 'success'
     }))),
     ...(details?.disputeRecord ? [{ time: '[DISPUTE]', msg: details.disputeRecord.reason, type: 'warn' }] : []),
@@ -343,11 +352,11 @@ export function ConsolePage() {
           name: 'proof_bundle.json',
           size: 'signed',
           hash: shortHash(details.proofBundle.proofHash, 6),
-          previewTitle: 'Signed Proof Bundle',
+          previewTitle: '签名证明包',
           previewLines: [
-            `Signer ${shortHash(details.proofBundle.operatorAttestation?.signer, 6)}`,
-            `Execution trace ${shortHash(details.proofBundle.executionTraceHash, 6)}`,
-            `Receipt head ${shortHash(details.proofBundle.receiptHead, 6)}`,
+            `签名地址 ${shortHash(details.proofBundle.operatorAttestation?.signer, 6)}`,
+            `执行轨迹 ${shortHash(details.proofBundle.executionTraceHash, 6)}`,
+            `回执头 ${shortHash(details.proofBundle.receiptHead, 6)}`,
           ],
         }]
       : []),
@@ -356,14 +365,14 @@ export function ConsolePage() {
           key: 'artifact',
           type: 'ART',
           name: 'artifact.json',
-          size: `${inspectedFiles.length} refs`,
+          size: `${inspectedFiles.length} 引用`,
           hash: shortHash(details.task?.proofHash, 6),
-          previewTitle: selectedArtifact?.taskTitle ?? selectedTask?.title ?? 'Artifact Output',
+          previewTitle: selectedArtifact?.taskTitle ?? selectedTask?.title ?? '交付产物',
           previewLines: [
-            selectedArtifact?.summary ?? 'No structured summary recorded.',
+            selectedArtifact?.summary ?? '当前没有结构化摘要记录。',
             ...(selectedArtifact?.notes ?? []).slice(0, 2),
-            ...(selectedArtifact?.filesToModify ?? []).slice(0, 2).map((entry) => `File ${entry}`),
-            ...(selectedArtifact?.acceptanceChecks ?? []).slice(0, 2).map((entry) => `Check ${entry}`),
+            ...(selectedArtifact?.filesToModify ?? []).slice(0, 2).map((entry) => `文件 ${entry}`),
+            ...(selectedArtifact?.acceptanceChecks ?? []).slice(0, 2).map((entry) => `检查 ${entry}`),
           ].filter(Boolean),
         }]
       : []),
@@ -372,15 +381,15 @@ export function ConsolePage() {
           key: 'receipt_record',
           type: 'RCP',
           name: 'receipt_record.json',
-          size: 'append-only',
+          size: '追加式',
           hash: shortHash(details.receiptRecord.headHash, 6),
-          previewTitle: 'Receipt Chain',
+          previewTitle: '回执链',
           previewLines: [
-            `Events ${details.receiptRecord.eventCount}`,
-            `Create ${shortHash(details.receiptRecord.receipts.createTxHash, 6)}`,
-            `Accept ${shortHash(details.receiptRecord.receipts.acceptTxHash, 6)}`,
-            details.receiptRecord.receipts.submitTxHash ? `Submit ${shortHash(details.receiptRecord.receipts.submitTxHash, 6)}` : 'Submit pending',
-            details.receiptRecord.receipts.finalizeTxHash ? `Finalize ${shortHash(details.receiptRecord.receipts.finalizeTxHash, 6)}` : 'Finalize pending',
+            `事件数 ${details.receiptRecord.eventCount}`,
+            `创建 ${shortHash(details.receiptRecord.receipts.createTxHash, 6)}`,
+            `接受 ${shortHash(details.receiptRecord.receipts.acceptTxHash, 6)}`,
+            details.receiptRecord.receipts.submitTxHash ? `提交 ${shortHash(details.receiptRecord.receipts.submitTxHash, 6)}` : '等待提交',
+            details.receiptRecord.receipts.finalizeTxHash ? `结算 ${shortHash(details.receiptRecord.receipts.finalizeTxHash, 6)}` : '等待结算',
           ],
         }]
       : []),
@@ -389,14 +398,14 @@ export function ConsolePage() {
           key: 'agent_log',
           type: 'LOG',
           name: 'agent_log.json',
-          size: `${details.agentLog.steps.length} steps`,
+          size: `${details.agentLog.steps.length} 步`,
           hash: shortHash(details.receiptRecord?.proofHash, 6),
-          previewTitle: 'Execution Log',
+          previewTitle: '执行日志',
           previewLines: [
             details.agentLog.plan.summary,
-            `Budget ${details.agentLog.budget.attemptsUsed}/${details.agentLog.budget.attemptsAllowed} attempts`,
-            `Model calls ${details.agentLog.budget.modelCalls}`,
-            `Guardrails ${details.agentLog.guardrails.preExecution.length + details.agentLog.guardrails.duringExecution.length + details.agentLog.guardrails.preCommit.length}`,
+            `预算 ${details.agentLog.budget.attemptsUsed}/${details.agentLog.budget.attemptsAllowed} 次尝试`,
+            `模型调用 ${details.agentLog.budget.modelCalls}`,
+            `护栏 ${details.agentLog.guardrails.preExecution.length + details.agentLog.guardrails.duringExecution.length + details.agentLog.guardrails.preCommit.length}`,
           ].filter(Boolean),
         }]
       : []),
@@ -405,12 +414,12 @@ export function ConsolePage() {
           key: 'dispute',
           type: 'DSP',
           name: 'dispute.json',
-          size: 'challenge',
+          size: '质疑',
           hash: shortHash(details.disputeRecord.evidenceHash, 6),
-          previewTitle: 'Dispute Record',
+          previewTitle: '争议记录',
           previewLines: [
             details.disputeRecord.reason,
-            `Tx ${shortHash(details.disputeRecord.txHash, 6)}`,
+            `交易 ${shortHash(details.disputeRecord.txHash, 6)}`,
           ],
         }]
       : []),
@@ -421,11 +430,11 @@ export function ConsolePage() {
           name: 'resolution.json',
           size: details.resolutionRecord.outcome,
           hash: shortHash(details.resolutionRecord.resolutionHash, 6),
-          previewTitle: 'Resolution Record',
+          previewTitle: '裁决记录',
           previewLines: [
-            `Winner ${details.resolutionRecord.winner}`,
+            `胜方 ${details.resolutionRecord.winner}`,
             details.resolutionRecord.reason,
-            `Tx ${shortHash(details.resolutionRecord.txHash, 6)}`,
+            `交易 ${shortHash(details.resolutionRecord.txHash, 6)}`,
           ],
         }]
       : []),
@@ -456,16 +465,16 @@ export function ConsolePage() {
     setActionMessage(null);
     try {
       const response = await postJson('/tasks', {
-        title: 'Review a policy-bound agent commitment',
-        instructions: 'Inspect the available evidence, produce a bounded recommendation, and commit only if the accountable evidence trail remains internally consistent.',
+        title: '审查一项受契约约束的智能体承诺',
+        instructions: '检查现有证据，给出边界明确的结果，并且只有在可追责证据链内部一致时才允许提交。当前默认示例仍然是采购类任务。',
         reward: 10000000,
         requiredStake: 500000000,
         deadlineHours: 24,
       });
-      setActionMessage(`Created covenant ${shortHash(response.task.id, 6)}`);
+      setActionMessage(`已创建契约 ${shortHash(response.task.id, 6)}`);
       await reloadConsole(response.task.id);
     } catch (createError) {
-      setActionError(createError instanceof Error ? createError.message : 'Failed to create covenant');
+      setActionError(createError instanceof Error ? createError.message : '创建契约失败。');
     } finally {
       setActionLoading(null);
     }
@@ -485,21 +494,21 @@ export function ConsolePage() {
       if (action === 'verify') {
         const response = await fetchJson(`/tasks/${selectedTask.id}/verify`);
         setVerification(response.report);
-        setActionMessage(`Verifier returned ${response.report.status}`);
+        setActionMessage(`验证器返回结果：${response.report.status}`);
       } else if (action === 'export') {
         const response = await postJson(`/tasks/${selectedTask.id}/export`, {});
-        setActionMessage(`Bundle exported to ${response.result.outputDir}`);
+        setActionMessage(`证明包已导出到 ${response.result.outputDir}`);
       } else if (action === 'arbiter') {
         await postJson(`/tasks/${selectedTask.id}/arbiter`, { mode: 'auto' });
-        setActionMessage('Arbiter review recorded');
+        setActionMessage('仲裁审查已记录');
         await reloadConsole(selectedTask.id);
         setRefreshNonce((value) => value + 1);
       } else {
         await postJson(`/tasks/${selectedTask.id}/${action}`, body);
         const successMessages = {
-          run: 'Execution recorded',
-          finalize: 'Settlement finalized',
-          dispute: 'Dispute opened',
+          run: '执行结果已记录',
+          finalize: '结算已完成',
+          dispute: '已发起争议',
         };
         setActionMessage(successMessages[action] ?? `${action} committed`);
         if (action === 'dispute') {
@@ -510,7 +519,7 @@ export function ConsolePage() {
         setRefreshNonce((value) => value + 1);
       }
     } catch (nextError) {
-      setActionError(nextError instanceof Error ? nextError.message : `Failed to ${action}`);
+      setActionError(nextError instanceof Error ? nextError.message : `执行 ${action} 失败。`);
     } finally {
       setActionLoading(null);
     }
@@ -577,7 +586,7 @@ export function ConsolePage() {
               <span style={{ width: '0.5rem', height: '0.5rem', backgroundColor: '#ffffff', borderRadius: '9999px', display: 'inline-block' }}></span>
               TrustCommit{' '}
               <span style={{ color: '#a3a3a3', fontSize: '0.875rem', marginLeft: '0.25rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em', fontWeight: 400 }}>
-                // Console
+                // 控制台
               </span>
             </div>
             <div style={{ height: '1rem', width: '1px', backgroundColor: 'rgba(255,255,255,0.08)' }}></div>
@@ -599,14 +608,14 @@ export function ConsolePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: '#a3a3a3' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span style={{ width: '0.375rem', height: '0.375rem', backgroundColor: health && Object.values(health.providers).some((provider) => provider.healthy) ? '#ffffff' : '#525252', borderRadius: '9999px', display: 'inline-block' }}></span>
-              <span style={{ color: '#ffffff' }}>{health?.chainId ? `Chain ${health.chainId}` : 'Offline'}</span>
+              <span style={{ color: '#ffffff' }}>{health?.chainId ? `链 ${health.chainId}` : '离线'}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span>Verifiers:</span>
+              <span>验证器：</span>
               <span style={{ color: '#ffffff' }}>{verification?.summary?.total ?? selectedLog?.verification?.validatorResults?.length ?? 0}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span>SYS ID:</span>
+              <span>系统 ID：</span>
               <span style={{ color: '#ffffff', backgroundColor: 'rgba(255,255,255,0.1)', padding: '0.125rem 0.375rem' }}>{shortHash(manifest?.chains?.covenant, 4)}</span>
             </div>
             <div style={{ color: '#525252', width: '7rem', textAlign: 'right' }}>{clock}</div>
@@ -645,13 +654,13 @@ export function ConsolePage() {
                   transition: 'all 0.2s',
                 }}
               >
-                <span>+</span> {actionLoading === 'create' ? 'Creating Covenant...' : 'Define New Covenant'}
+                <span>+</span> {actionLoading === 'create' ? '正在创建契约...' : '新建契约'}
               </button>
             </div>
 
             {/* Tabs */}
             <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: '#a3a3a3' }}>
-              {[{ key: 'active', label: `Active (${tasks.filter((task) => !['completed', 'slashed'].includes(task.status)).length})` }, { key: 'pending', label: `Pending (${tasks.filter((task) => ['draft', 'created', 'running'].includes(task.status)).length})` }, { key: 'settled', label: `Settled (${tasks.filter((task) => ['completed', 'slashed'].includes(task.status)).length})` }].map((tab) => (
+              {[{ key: 'active', label: `进行中 (${tasks.filter((task) => !['completed', 'slashed'].includes(task.status)).length})` }, { key: 'pending', label: `待处理 (${tasks.filter((task) => ['draft', 'created', 'running'].includes(task.status)).length})` }, { key: 'settled', label: `已结算 (${tasks.filter((task) => ['completed', 'slashed'].includes(task.status)).length})` }].map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
@@ -697,19 +706,19 @@ export function ConsolePage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: cov.disputed ? '#ffffff' : selectedCovenant === cov.id ? '#ffffff' : '#a3a3a3' }}>{cov.id}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                      <span className={cov.status === 'Verifying' || cov.status === 'Executing' ? 'blink' : ''} style={{ width: '0.375rem', height: '0.375rem', backgroundColor: cov.statusColor, borderRadius: '9999px', display: 'inline-block' }}></span>
+                      <span className={cov.status === '执行中' ? 'blink' : ''} style={{ width: '0.375rem', height: '0.375rem', backgroundColor: cov.statusColor, borderRadius: '9999px', display: 'inline-block' }}></span>
                       <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.6rem', color: cov.statusColor, textTransform: 'uppercase', letterSpacing: '0.2em' }}>{cov.status}</span>
                     </div>
                   </div>
                   <h3 style={{ fontWeight: 300, color: cov.disputed || selectedCovenant === cov.id ? '#ffffff' : '#a3a3a3', marginBottom: '0.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.02em', fontSize: '0.875rem' }}>{cov.title}</h3>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: cov.disputed ? 'rgba(255,255,255,0.5)' : '#525252', marginTop: '0.75rem' }}>
-                    <span>Agent: {cov.agent}</span>
-                    <span>Stake: {cov.stake}</span>
+                    <span>智能体：{cov.agent}</span>
+                    <span>质押：{cov.stake}</span>
                   </div>
                 </div>
               ))}
               {!covenants.length ? (
-                <div style={{ padding: '1rem', color: '#525252', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.7rem', lineHeight: '1.6' }}>No covenants match this filter yet. Define a new covenant or switch views.</div>
+                <div style={{ padding: '1rem', color: '#525252', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.7rem', lineHeight: '1.6' }}>当前没有匹配这个筛选条件的契约。你可以新建契约，或切换到其他视图。</div>
               ) : null}
             </div>
           </aside>
@@ -721,24 +730,24 @@ export function ConsolePage() {
             <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', backgroundColor: '#000000', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
                 <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: statusColor(selectedTask?.status), textTransform: 'uppercase', letterSpacing: '0.2em', border: `1px solid ${statusColor(selectedTask?.status)}`, padding: '0.125rem 0.5rem', backgroundColor: 'rgba(115,115,115,0.1)' }}>
-                  {details?.disputeRecord ? 'Disputed' : details?.resolutionRecord ? 'Resolved' : selectedTask?.status === 'submitted' ? 'Awaiting Consensus' : selectedTask?.status === 'completed' ? 'Settled' : 'Executing'}
+                  {details?.disputeRecord ? '争议中' : details?.resolutionRecord ? '已裁决' : selectedTask?.status === 'submitted' ? '等待共识' : selectedTask?.status === 'completed' ? '已结算' : '执行中'}
                 </span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3' }}>{detailsLoading ? 'Loading selected covenant...' : selectedTask ? `Procurement reward: ${formatToken(selectedTask.reward)} USDC` : 'Select a covenant to inspect its lifecycle.'}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3' }}>{detailsLoading ? '正在加载选中的契约...' : selectedTask ? `契约奖励：${formatToken(selectedTask.reward)} USDC` : '请选择一个契约查看它的生命周期。'}</span>
               </div>
-              <h1 style={{ fontSize: '1.875rem', fontWeight: 300, color: '#ffffff', letterSpacing: '-0.025em', marginTop: '0.5rem', marginBottom: '1rem' }}>{selectedTask?.title ?? 'TrustCommit Console'}</h1>
+              <h1 style={{ fontSize: '1.875rem', fontWeight: 300, color: '#ffffff', letterSpacing: '-0.025em', marginTop: '0.5rem', marginBottom: '1rem' }}>{selectedTask?.title ?? 'TrustCommit 控制台'}</h1>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                  <span style={{ color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em', fontSize: '0.65rem' }}>Commitment ID</span>
+                  <span style={{ color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em', fontSize: '0.65rem' }}>承诺 ID</span>
                   <span style={{ color: '#ffffff' }}>{selectedTask?.covenantId ? shortHash(selectedTask.covenantId, 6) : shortHash(selectedTask?.id, 6)}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                  <span style={{ color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em', fontSize: '0.65rem' }}>Task Hash</span>
+                  <span style={{ color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em', fontSize: '0.65rem' }}>任务哈希</span>
                   <span style={{ color: '#ffffff' }}>{shortHash(selectedTask?.taskHash, 6)}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                  <span style={{ color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em', fontSize: '0.65rem' }}>Financial Stake</span>
-                  <span style={{ color: '#ffffff' }}>{formatToken(selectedTask?.requiredStake)} USDC <span style={{ color: '#525252', fontSize: '0.65rem', marginLeft: '0.25rem' }}>(Escrowed)</span></span>
+                  <span style={{ color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em', fontSize: '0.65rem' }}>资金质押</span>
+                  <span style={{ color: '#ffffff' }}>{formatToken(selectedTask?.requiredStake)} USDC <span style={{ color: '#525252', fontSize: '0.65rem', marginLeft: '0.25rem' }}>(已托管)</span></span>
                 </div>
               </div>
             </div>
@@ -748,27 +757,27 @@ export function ConsolePage() {
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
                 <div style={{ width: '2.5rem', height: '2.5rem', border: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'JetBrains Mono', monospace", color: '#ffffff', fontSize: '0.875rem', flexShrink: 0 }}>E</div>
                 <div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '0.125rem' }}>Executor Agent</div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '0.125rem' }}>执行智能体</div>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.875rem', color: '#ffffff', marginBottom: '0.25rem' }}>{(manifest?.name ?? 'runtime').toUpperCase().replaceAll(' ', '_')}</div>
                   <div style={{ display: 'flex', gap: '0.75rem', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#a3a3a3' }}>
-                    <span>Provider: <span style={{ color: '#ffffff' }}>{latestRun?.provider ?? 'pending'}</span></span>
-                    <span>Model: {latestRun?.model ?? 'waiting'}</span>
+                    <span>提供方：<span style={{ color: '#ffffff' }}>{latestRun?.provider ?? '待定'}</span></span>
+                    <span>模型：{latestRun?.model ?? '等待中'}</span>
                   </div>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.62rem', color: '#737373', marginTop: '0.35rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    Covenant validator: {selectedLog?.verification?.profile ?? 'unassigned'}
+                    契约验证器：{selectedLog?.verification?.profile ?? '未分配'}
                   </div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', paddingLeft: '2rem', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
                 <div style={{ width: '2.5rem', height: '2.5rem', border: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'JetBrains Mono', monospace", color: '#ffffff', fontSize: '0.875rem', flexShrink: 0 }}>C</div>
                 <div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '0.125rem' }}>Creator Identity</div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.875rem', color: '#ffffff', marginBottom: '0.25rem' }}>{selectedTask?.createdBy?.toUpperCase() ?? 'UNASSIGNED'}</div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '0.125rem' }}>创建者身份</div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.875rem', color: '#ffffff', marginBottom: '0.25rem' }}>{selectedTask?.createdBy?.toUpperCase() ?? '未分配'}</div>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#a3a3a3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '12rem' }} title={manifest?.operator?.address ?? ''}>
-                    {manifest?.operator?.address ?? 'No operator wallet'}
+                    {manifest?.operator?.address ?? '暂无操作钱包'}
                   </div>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.62rem', color: '#737373', marginTop: '0.35rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '12rem' }}>
-                    Commitment profile: {selectedLog?.task?.commitmentProfile ?? 'unassigned'}
+                    承诺画像：{selectedLog?.task?.commitmentProfile ?? '未分配'}
                   </div>
                 </div>
               </div>
@@ -777,8 +786,8 @@ export function ConsolePage() {
             {/* Terminal Log */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#000000', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', padding: '0.5rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.15)', backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Execution and Receipt Logging</span>
-                <span className="blink" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em' }}>{detailsLoading ? 'Reading receipts' : 'Recording accountable execution'}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em' }}>执行与回执日志</span>
+                <span className="blink" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em' }}>{detailsLoading ? '读取回执中' : '记录可追责执行'}</span>
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', paddingTop: '3rem', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3', lineHeight: '1.6', position: 'relative' }}>
@@ -798,7 +807,7 @@ export function ConsolePage() {
             {/* Artifacts */}
             <div style={{ height: '12rem', borderTop: '1px solid rgba(255,255,255,0.08)', backgroundColor: '#000000', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
               <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Execution Artifacts and Receipts ({artifactEntries.length})</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.2em' }}>执行产物与回执（{artifactEntries.length}）</span>
                 <button
                   type="button"
                   onClick={() => handleTaskAction('export')}
@@ -807,7 +816,7 @@ export function ConsolePage() {
                   disabled={!selectedTask || actionLoading === 'export'}
                   style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: !selectedTask ? '#525252' : '#ffffff', background: 'none', border: 'none', cursor: !selectedTask || actionLoading === 'export' ? 'not-allowed' : 'pointer', textDecoration: downloadHover ? 'underline' : 'none' }}
                 >
-                  {actionLoading === 'export' ? 'Exporting...' : 'Export Bundle'}
+                  {actionLoading === 'export' ? '导出中...' : '导出证明包'}
                 </button>
               </div>
               <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '1rem', height: '100%', overflow: 'hidden' }}>
@@ -824,7 +833,7 @@ export function ConsolePage() {
                 <div style={{ border: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.03)', padding: '0.75rem', overflowY: 'auto' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.6rem' }}>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', textTransform: 'uppercase', letterSpacing: '0.18em' }}>
-                      Artifact Inspection
+                      产物检查
                     </div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.62rem', color: '#ffffff' }}>
                       {selectedArtifactEntry?.type ?? '—'}
@@ -848,7 +857,7 @@ export function ConsolePage() {
                     </>
                   ) : (
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.63rem', color: '#525252', lineHeight: '1.6' }}>
-                      No execution artifacts have been emitted for this covenant yet.
+                        这个契约还没有生成证明。请先运行任务，生成结果、证据包和回执链。
                     </div>
                   )}
                 </div>
@@ -861,33 +870,33 @@ export function ConsolePage() {
 
             {/* Header */}
             <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.05)', textAlign: 'center' }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#ffffff', letterSpacing: '0.2em', textTransform: 'uppercase' }}>Agent Procurement Console</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#ffffff', letterSpacing: '0.2em', textTransform: 'uppercase' }}>智能体回执控制台</span>
             </div>
 
             {/* Cryptographic Evidence */}
             <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 300 }}>
-                <span>Proof and Receipts</span>
-                <span style={{ fontSize: '0.6rem', padding: '0.125rem 0.375rem', border: '1px solid rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.1)', color: '#ffffff' }}>{selectedLog?.verification?.schemaSatisfied ? 'Secured' : 'Review'}</span>
+                <span>追责快照</span>
+                <span style={{ fontSize: '0.6rem', padding: '0.125rem 0.375rem', border: '1px solid rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.1)', color: '#ffffff' }}>{selectedLog?.verification?.schemaSatisfied ? '已验证' : '待复核'}</span>
               </h3>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', marginBottom: '0.25rem' }}>
-                    <span>Proof Type</span>
-                    <span style={{ color: '#ffffff' }}>signed proof bundle</span>
+                    <span>结算绑定</span>
+                    <span style={{ color: '#ffffff' }}>证明包 + 回执头</span>
                   </div>
                   <div style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', padding: '0.5rem', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.6rem', color: '#a3a3a3', wordBreak: 'break-all', lineHeight: '1.6' }}>
-                    {selectedTask?.proofHash ? shortHash(selectedTask.proofHash, 8) : '0x0000...'}<span style={{ color: '#ffffff' }}> {selectedLog?.verification?.schemaSatisfied ? 'VALID' : 'FLAGGED'}</span><br />
-                    taskHash: {shortHash(selectedTask?.taskHash, 8)} / receiptHead: {shortHash(details?.receiptRecord?.headHash, 8)}
+                    {selectedTask?.proofHash ? shortHash(selectedTask.proofHash, 8) : '0x0000...'}<span style={{ color: '#ffffff' }}> {selectedLog?.verification?.schemaSatisfied ? '已通过' : '已标记'}</span><br />
+                    taskHash：{shortHash(selectedTask?.taskHash, 8)} / receiptHead：{shortHash(details?.receiptRecord?.headHash, 8)}
                   </div>
                 </div>
 
                 {actionMessage ? (
                   <div style={{ border: '1px solid rgba(255,255,255,0.08)', padding: '0.75rem', backgroundColor: 'rgba(255,255,255,0.03)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', marginBottom: '0.35rem' }}>
-                      <span>Latest Action</span>
-                      <span style={{ color: '#ffffff' }}>synced</span>
+                      <span>最近动作</span>
+                      <span style={{ color: '#ffffff' }}>已同步</span>
                     </div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#a3a3a3', lineHeight: '1.6' }}>
                       {actionMessage}
@@ -898,8 +907,8 @@ export function ConsolePage() {
                 {actionError ? (
                   <div style={{ border: '1px solid rgba(255,255,255,0.08)', padding: '0.75rem', backgroundColor: 'rgba(255,255,255,0.03)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', marginBottom: '0.35rem' }}>
-                      <span>Runtime Notice</span>
-                      <span style={{ color: '#ffffff' }}>review</span>
+                      <span>运行时提示</span>
+                      <span style={{ color: '#ffffff' }}>请检查</span>
                     </div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#a3a3a3', lineHeight: '1.6' }}>
                       {actionError}
@@ -908,14 +917,14 @@ export function ConsolePage() {
                 ) : null}
 
                 {[ 
-                  { label: 'Execution Wallet', value: details?.chainContext?.actors?.executionWallet ?? manifest?.operator?.address ?? 'pending' },
-                  { label: 'Evidence Files', value: `${inspectedFiles.length} preserved` },
-                  { label: 'Verifier', value: verificationLoading ? 'running...' : verification ? `${verification.status} (${verification.summary.passed}/${verification.summary.total})` : 'pending' },
+                  { label: '签名钱包', value: details?.chainContext?.actors?.executionWallet ?? manifest?.operator?.address ?? '待定' },
+                  { label: '保留证据', value: `${inspectedFiles.length} 个文件` },
+                  { label: '验证器', value: verificationLoading ? '运行中...' : verification ? `${verification.status} (${verification.summary.passed}/${verification.summary.total})` : '待定' },
                 ].map((item, i) => (
                   <div key={i}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252', marginBottom: '0.25rem' }}>
                       <span>{item.label}</span>
-                      <span style={{ color: '#ffffff' }}>Inspect</span>
+                      <span style={{ color: '#ffffff' }}>查看</span>
                     </div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', backgroundColor: '#000000', border: '1px solid rgba(255,255,255,0.08)', padding: '0.25rem 0.5rem' }}>
                       {item.value}
@@ -928,7 +937,7 @@ export function ConsolePage() {
 
             {/* Consensus State */}
             <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', flex: 1 }}>
-              <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '1.5rem', fontWeight: 300 }}>Commitment Lifecycle</h3>
+              <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '1.5rem', fontWeight: 300 }}>这次决策如何变成可执行结果</h3>
 
               <div style={{ position: 'relative' }}>
                 <div style={{ position: 'absolute', left: '7px', top: '0.5rem', bottom: '0.5rem', width: '2px', backgroundColor: 'rgba(255,255,255,0.08)' }}></div>
@@ -940,8 +949,8 @@ export function ConsolePage() {
                     <div style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#737373', borderRadius: '9999px' }}></div>
                   </div>
                   <div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', marginBottom: '0.25rem' }}>Covenant Accepted</div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252' }}>{details?.receiptRecord?.receipts?.createTxHash ? `Confirmed ${shortHash(details.receiptRecord.receipts.createTxHash)}` : 'Waiting for covenant creation receipt'}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', marginBottom: '0.25rem' }}>契约已创建并被接受</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252' }}>{details?.receiptRecord?.receipts?.createTxHash ? `承诺已记录 ${shortHash(details.receiptRecord.receipts.createTxHash)}` : '等待契约上链记录'}</div>
                     {canRun ? (
                       <button
                         type="button"
@@ -949,7 +958,7 @@ export function ConsolePage() {
                         onClick={() => handleTaskAction('run')}
                         style={actionLinkStyle(actionLoading === 'run')}
                       >
-                        {actionLoading === 'run' ? 'Executing...' : 'Execute Procurement Task'}
+                        {actionLoading === 'run' ? '执行中...' : '运行契约任务'}
                       </button>
                     ) : null}
                   </div>
@@ -961,10 +970,10 @@ export function ConsolePage() {
                     <div className="blink" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#737373', borderRadius: '9999px' }}></div>
                   </div>
                   <div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#737373', marginBottom: '0.25rem' }}>{details?.disputeRecord ? 'Dispute Review' : 'Proof Verification'}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#737373', marginBottom: '0.25rem' }}>{details?.disputeRecord ? '争议审查中' : '决策已连同证明提交'}</div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#a3a3a3', lineHeight: '1.6' }}>
-                      {details?.disputeRecord ? details.disputeRecord.reason : details?.receiptRecord?.receipts?.submitTxHash ? `Submitted ${shortHash(details.receiptRecord.receipts.submitTxHash)}` : 'Waiting for proof submission'}<br />
-                      Checks: <span style={{ color: '#ffffff' }}>{selectedLog?.verification?.validatorResults?.length ?? 0} validators</span>
+                      {details?.disputeRecord ? details.disputeRecord.reason : details?.receiptRecord?.receipts?.submitTxHash ? `证明已提交 ${shortHash(details.receiptRecord.receipts.submitTxHash)}` : '等待签名证明'}<br />
+                      检查项：<span style={{ color: '#ffffff' }}>{selectedLog?.verification?.validatorResults?.length ?? 0} 个验证器</span>
                     </div>
                     {!details?.disputeRecord ? (
                       <button
@@ -973,7 +982,7 @@ export function ConsolePage() {
                         onClick={() => handleTaskAction('verify')}
                         style={actionLinkStyle(actionLoading === 'verify')}
                       >
-                        {actionLoading === 'verify' ? 'Verifying...' : 'Verify Commitment'}
+                        {actionLoading === 'verify' ? '验证中...' : '验证证明'}
                       </button>
                     ) : null}
                   </div>
@@ -983,8 +992,8 @@ export function ConsolePage() {
                 <div style={{ display: 'flex', gap: '1rem', position: 'relative', opacity: 0.5 }}>
                   <div style={{ width: '1rem', height: '1rem', borderRadius: '9999px', backgroundColor: '#000000', border: '2px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 10, marginTop: '0.125rem' }}></div>
                   <div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3', marginBottom: '0.25rem' }}>{details?.resolutionRecord ? 'Resolved' : 'Settlement and Consequence'}</div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252' }}>{details?.resolutionRecord ? `${details.resolutionRecord.outcome} ${shortHash(details.resolutionRecord.txHash)}` : details?.receiptRecord?.receipts?.finalizeTxHash ? `Settled ${shortHash(details.receiptRecord.receipts.finalizeTxHash)}` : 'Waiting for settlement'}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a3a3a3', marginBottom: '0.25rem' }}>{details?.resolutionRecord ? '裁决结果' : '等待结算或争议'}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#525252' }}>{details?.resolutionRecord ? `${details.resolutionRecord.outcome} ${shortHash(details.resolutionRecord.txHash)}` : details?.receiptRecord?.receipts?.finalizeTxHash ? `已结算 ${shortHash(details.receiptRecord.receipts.finalizeTxHash)}` : '等待结算或发起争议'}</div>
                     {canFinalize ? (
                       <button
                         type="button"
@@ -992,7 +1001,7 @@ export function ConsolePage() {
                         onClick={() => handleTaskAction('finalize')}
                         style={actionLinkStyle(actionLoading === 'finalize')}
                       >
-                        {actionLoading === 'finalize' ? 'Finalizing...' : 'Finalize Settlement'}
+                        {actionLoading === 'finalize' ? '结算中...' : '完成契约结算'}
                       </button>
                     ) : null}
                   </div>
@@ -1065,12 +1074,12 @@ const DisputePanel = ({
 }) => {
   const [hovered, setHovered] = useState(false);
   const ctaLabel = resolutionRecord
-    ? 'Refresh Covenant State'
+    ? '刷新契约状态'
     : disputeRecord
-      ? 'Run AI Arbiter'
+      ? '运行 AI 仲裁'
       : taskStatus === 'submitted'
-        ? 'Open Dispute'
-        : 'Refresh Covenant State';
+        ? '发起质疑'
+        : '刷新契约状态';
 
   const handleClick = () => {
     if (resolutionRecord) {
@@ -1093,13 +1102,13 @@ const DisputePanel = ({
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1rem' }}>
         <div style={{ width: '1rem', height: '1rem', marginTop: '0.125rem', border: '1px solid #ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.5rem', color: '#ffffff', flexShrink: 0 }}>!</div>
         <div>
-          <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '0.25rem', fontWeight: 300 }}>Dispute and Resolution</h3>
+          <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '0.25rem', fontWeight: 300 }}>质疑这次决策</h3>
           <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#a3a3a3', lineHeight: '1.6' }}>
             {resolutionRecord
-              ? `Resolved ${resolutionRecord.outcome}. ${resolutionRecord.reason}`
+              ? `已裁决：${resolutionRecord.outcome}。${resolutionRecord.reason}`
               : disputeRecord
                 ? `${disputeRecord.reason} (${shortHash(disputeRecord.txHash)})`
-                : <>If the procurement decision violates the covenant boundary, the creator can challenge it with a reviewable receipt trail and onchain dispute flow.</>}
+                : <>如果这次行动违反了既定契约，你可以在这里发起质疑，并留下可复核的回执链和链上结果。当前默认示例是采购决策。</>}
           </p>
         </div>
       </div>
@@ -1109,8 +1118,8 @@ const DisputePanel = ({
           <textarea
             value={disputeDraft}
             onChange={(event) => setDisputeDraft(event.target.value)}
-            aria-label="Dispute reason"
-            placeholder="State the procurement covenant violation or evidence mismatch."
+            aria-label="争议理由"
+            placeholder="写明预算、政策或证据方面的违约点，说明为什么这次决策可以被质疑。"
             rows={4}
             style={{
               resize: 'vertical',
@@ -1140,7 +1149,7 @@ const DisputePanel = ({
                 cursor: 'pointer'
               }}
             >
-              Cancel
+              关闭
             </button>
             <button
               type="button"
@@ -1159,7 +1168,7 @@ const DisputePanel = ({
                 cursor: busy || !disputeDraft.trim() ? 'not-allowed' : 'pointer'
               }}
             >
-              {busy ? 'Submitting...' : 'Submit Dispute'}
+              {busy ? '提交中...' : '提交质疑'}
             </button>
           </div>
         </div>
@@ -1188,7 +1197,7 @@ const DisputePanel = ({
         }}
       >
         <span style={{ position: 'relative', zIndex: 10 }}>
-          {busy ? 'Processing...' : ctaLabel}
+          {busy ? '处理中...' : ctaLabel}
         </span>
       </button>
     </div>

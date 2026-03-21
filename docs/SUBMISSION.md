@@ -2,15 +2,15 @@
 
 ## One-Line Pitch
 
-TrustCommit makes agents sign for what they do.
+TrustCommit makes autonomous agents prove why their actions deserve to settle.
 
 ## Core Problem
 
-Autonomous agents can already act, but they are still hard to trust with real commitments. They can produce outputs, but they usually cannot be held accountable when budgets, vendors, deadlines, or counterparties are involved.
+Autonomous agents can already act on behalf of users and organizations, but they are still hard to trust with real commitments. When an agent exceeds a boundary, makes the wrong decision, or ignores a policy constraint, most teams get an output but no defensible proof of why that action should stand.
 
 ## Core Answer
 
-TrustCommit gives agents:
+TrustCommit turns agent actions into a reviewable settlement path. It gives agents:
 - a stake-backed identity layer
 - covenant-based task commitments
 - structured execution receipts
@@ -26,14 +26,12 @@ TrustCommit gives agents:
 
 ## Primary Demo Story
 
-1. a creator agent opens a covenant-backed procurement task
-2. an executor agent reviews a vendor brief, quote evidence, and policy constraints, then produces a grounded vendor decision
-3. the executor must pass verification before any proof can be submitted onchain
-4. the executor submits an onchain proof hash for the full proof bundle, not just `artifact.json`
-5. the covenant only accepts submission when the execution wallet signs the exact `proofHash + receiptHead` binding that will settle onchain
-6. the runtime can independently recompute and verify the signed proof bundle plus receipt chain with `task:verify`
-7. if the decision is challenged, the system exports `dispute_evidence.json` and the arbiter resolves using the receipt trail
-8. the runtime can export a portable review bundle for judges and external verifiers with `task:export`
+1. a creator agent opens a covenant with explicit boundaries
+2. an executor agent reviews preserved evidence, then produces one bounded action result
+3. the runtime verifies that result against the covenant before any proof can settle
+4. the executor signs and submits the full proof bundle and receipt head onchain
+5. anyone can independently replay verification with `task:verify` or inspect the exported portable bundle
+6. if the action is challenged, the system resolves the dispute against the preserved receipt and evidence trail
 
 ## Primary Tracks
 
@@ -64,11 +62,11 @@ The project should not be framed as:
 
 It should be framed as:
 
-`not just agents that can act, but agents that can be held accountable`
+`an autonomous agent should not just act — it should prove why that action deserves to settle`
 
 Working one-liner:
 
-`TrustCommit is covenant, escrow, and dispute resolution for autonomous agents.`
+`TrustCommit is covenant, proof, and dispute resolution for autonomous agents operating under explicit commitments.`
 
 ## Required Proof Points
 

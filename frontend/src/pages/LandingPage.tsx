@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 export function LandingPage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [timeDisplay, setTimeDisplay] = useState("SYS INIT — 00:00:00");
+  const [timeDisplay, setTimeDisplay] = useState("系统启动 — 00:00:00");
   const [pingVal, setPingVal] = useState(12);
 
   useEffect(() => {
@@ -29,26 +29,6 @@ export function LandingPage() {
       ::-webkit-scrollbar-thumb:hover { background: #444; }
       .bio-text { transition: opacity 0.2s; }
       .bio-text:hover { filter: url(#noise-dither); }
-      .corner-idx {
-        position: fixed;
-        font-size: 4rem;
-        font-weight: 300;
-        font-family: 'DM Sans', sans-serif;
-        line-height: 1;
-        z-index: 100;
-        user-select: none;
-        color: #E8E6E0;
-        transition: opacity 0.3s, transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
-        mix-blend-mode: difference;
-      }
-      .corner-idx.glitch-active { opacity: 0.4; }
-      .tl { top: 0; left: 0; padding: 2.5rem; }
-      .tr { top: 0; right: 0; padding: 2.5rem; }
-      .bl { bottom: 0; left: 0; padding: 2.5rem; }
-      .br { bottom: 0; right: 0; padding: 2.5rem; }
-      @media (max-width: 768px) {
-        .corner-idx { font-size: 2rem; padding: 1.5rem; }
-      }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
@@ -57,13 +37,13 @@ export function LandingPage() {
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      const timeString = now.toLocaleTimeString("en-US", {
+      const timeString = now.toLocaleTimeString("zh-CN", {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
         timeZoneName: "short"
       });
-      setTimeDisplay(`SYS ALIVE — ${timeString}`);
+      setTimeDisplay(`系统在线 — ${timeString}`);
       if (Math.random() > 0.8) {
         setPingVal(8 + Math.floor(Math.random() * 14));
       }
@@ -147,21 +127,7 @@ export function LandingPage() {
       lastMouse.x = e.clientX;
       lastMouse.y = e.clientY;
 
-      const cornerEls = document.querySelectorAll(".corner-idx");
-      let detected: "corner" | "h1" | null = null;
-
-      cornerEls.forEach((el) => {
-        const r = el.getBoundingClientRect();
-        const cx = r.left + r.width / 2;
-        const cy = r.top + r.height / 2;
-        const d = Math.hypot(e.clientX - cx, e.clientY - cy);
-        if (d < 100) {
-          detected = "corner";
-          el.classList.add("glitch-active");
-        } else {
-          el.classList.remove("glitch-active");
-        }
-      });
+      let detected: "h1" | null = null;
 
       const h1El = document.getElementById("main-heading");
       if (h1El && window.scrollY < window.innerHeight) {
@@ -181,16 +147,12 @@ export function LandingPage() {
         zoomTarget = 1.08;
         speedTarget = 0.7;
         h1DistortStrength = 1.0;
-      } else if (detected === "corner") {
-        zoomTarget = 1.15;
-        speedTarget = 1.5;
-        h1DistortStrength = 0;
       } else {
         zoomTarget = 1.0;
         speedTarget = phase === "idle" ? 0.2 : 1.0;
         h1DistortStrength = 0;
       }
-      glitchMode = detected === "corner";
+      glitchMode = false;
     };
 
     function waveAmp(x: number, l: number, t: number, spd: number) {
@@ -388,24 +350,35 @@ export function LandingPage() {
         </defs>
       </svg>
 
-      <div className="corner-idx tl">T</div>
-      <div className="corner-idx tr">C</div>
-      <div className="corner-idx bl">0</div>
-      <div className="corner-idx br">1</div>
-
       <div className="relative z-10 flex min-h-screen w-full flex-col">
         <div className="relative h-[70vh] w-full overflow-hidden border-b border-[rgba(232,230,224,0.1)] bg-[#0A0A0A]">
           <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" />
-          <div className="pointer-events-auto absolute bottom-16 left-10 z-20 max-w-4xl md:left-20">
-            <h1 id="main-heading" className="mb-6 text-5xl font-light leading-[1.05] tracking-tight text-[#E8E6E0] md:text-[5rem]">
-              Agents Should Sign
-              <br />
-              For What They Do
-            </h1>
-            <p className="max-w-2xl text-lg font-light tracking-tight text-[#888880] md:text-xl">
-              TrustCommit gives autonomous agents covenants, escrow, receipts, verification, and dispute resolution so they can make real commitments, not just generate outputs.
-            </p>
-          </div>
+            <div className="pointer-events-auto absolute bottom-16 left-10 z-20 max-w-4xl md:left-20">
+              <div
+                aria-hidden="true"
+                className="absolute -left-10 -top-12 h-40 w-[28rem] rounded-full bg-[rgba(0,0,0,0.48)] blur-3xl md:h-52 md:w-[36rem]"
+              />
+              <h1
+                id="main-heading"
+                className="relative z-10 mb-6 text-5xl font-light leading-[1.05] tracking-tight text-[#E8E6E0] md:text-[5rem]"
+                style={{
+                  transform: "translateY(-10px)",
+                  textShadow:
+                    "0 2px 10px rgba(0,0,0,0.72), 0 10px 32px rgba(0,0,0,0.55), 0 0 1px rgba(255,255,255,0.14)"
+                }}
+              >
+                TrustCommit
+              </h1>
+              <p
+                className="relative z-10 text-[0.86rem] font-medium uppercase tracking-[0.28em] text-[#B6B0A4] md:text-[0.98rem]"
+                style={{
+                  transform: "translateY(-10px)",
+                  textShadow: "0 2px 8px rgba(0,0,0,0.68), 0 6px 20px rgba(0,0,0,0.42)"
+                }}
+              >
+                智能体追责层
+              </p>
+            </div>
         </div>
 
         <div className="grid h-auto grid-cols-1 content-start gap-10 border-b border-[rgba(232,230,224,0.1)] bg-[#0A0A0A] p-10 md:h-[30vh] md:grid-cols-12 md:gap-8 md:p-20">
@@ -414,199 +387,60 @@ export function LandingPage() {
               <span className="mb-3 block font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-wider text-[#888880]">
                 {timeDisplay}
               </span>
-              <p className="bio-text max-w-md text-[0.95rem] font-light leading-relaxed text-[#E8E6E0]">
-                TrustCommit turns agent procurement into an accountable workflow: explicit commitments, bounded execution, signed receipts, independent verification, and consequences when the covenant is broken.
+              <p className="bio-text max-w-none whitespace-nowrap text-[1.02rem] font-medium leading-none tracking-tight text-[#F1EEE8] md:text-[1.12rem]">
+                TrustCommit 让智能体的承诺、执行和结果都变得可验证、可质疑、可追责。
               </p>
             </div>
             <div>
-              <p className="text-[0.85rem] font-light text-[#888880]">Built for verifiable execution.</p>
+              <p className="text-[0.85rem] font-light text-[#888880]">为可验证执行而构建。</p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 text-[0.95rem] font-light md:col-span-4">
-            <a
-              href="https://github.com/Ser4nu11EN7/TrustCommit/blob/master/docs/SUBMISSION.md"
-              target="_blank"
-              rel="noreferrer"
-              className="w-fit border-b border-transparent pb-1 text-[#E8E6E0] transition-all hover:border-[rgba(232,230,224,0.1)] hover:opacity-60"
-            >
-              Read Submission Frame <span className="font-['Fragment_Mono'] text-xs">↗</span>
-            </a>
-            <a
-              href="https://github.com/Ser4nu11EN7/TrustCommit#readme"
-              target="_blank"
-              rel="noreferrer"
-              className="w-fit border-b border-transparent pb-1 text-[#E8E6E0] transition-all hover:border-[rgba(232,230,224,0.1)] hover:opacity-60"
-            >
-              View Documentation <span className="font-['Fragment_Mono'] text-xs">↗</span>
-            </a>
-            <Link
-              to="/console"
-              className="w-fit border-b border-transparent pb-1 text-[#E8E6E0] transition-all hover:border-[rgba(232,230,224,0.1)] hover:opacity-60"
-            >
-              Inspect Live Console <span className="font-['Fragment_Mono'] text-xs">↗</span>
-            </Link>
-            <a
-              href="https://github.com/Ser4nu11EN7/TrustCommit"
-              target="_blank"
-              rel="noreferrer"
-              className="w-fit border-b border-transparent pb-1 text-[#E8E6E0] transition-all hover:border-[rgba(232,230,224,0.1)] hover:opacity-60"
-            >
-              GitHub Repository <span className="font-['Fragment_Mono'] text-xs">↗</span>
-            </a>
-          </div>
-
-          <div className="mt-8 flex h-full flex-col justify-between text-right font-['Fragment_Mono'] text-[0.65rem] text-[#888880] md:col-span-2 md:mt-0">
-            <div>
-              PROTOCOL V1.0.0
-              <br />
-              PROCUREMENT CORE
+            <div className="flex flex-col gap-4 text-[0.95rem] font-light md:col-span-4">
+              <div className="w-fit border-t border-[rgba(232,230,224,0.14)] pt-3">
+                <span className="block font-['Fragment_Mono'] text-[0.64rem] uppercase tracking-[0.22em] text-[#888880]">
+                  PRIMARY ACCESS
+                </span>
+                <Link
+                  to="/console"
+                  className="mt-3 inline-flex items-end gap-3 text-[1.18rem] font-light tracking-[0.02em] text-[#E8E6E0] transition-all hover:opacity-70 md:text-[1.34rem]"
+                >
+                  <span className="border-b border-[rgba(232,230,224,0.24)] pb-1">进入实时控制台</span>
+                  <span className="font-['Fragment_Mono'] text-[0.72rem] text-[#9E988D]">↗</span>
+                </Link>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[0.8rem] tracking-[0.08em] text-[#8E897F]">
+                <a
+                  href="https://github.com/Ser4nu11EN7/TrustCommit#readme"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="transition-all hover:text-[#D3CEC2]"
+                >
+                  文档 <span className="ml-1 font-['Fragment_Mono'] text-[0.68rem]">↗</span>
+                </a>
+                <a
+                  href="https://github.com/Ser4nu11EN7/TrustCommit"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="transition-all hover:text-[#D3CEC2]"
+                >
+                  GitHub <span className="ml-1 font-['Fragment_Mono'] text-[0.68rem]">↗</span>
+                </a>
+              </div>
             </div>
+
+            <div className="mt-8 flex h-full flex-col justify-between text-right font-['Fragment_Mono'] text-[0.65rem] text-[#888880] md:col-span-2 md:mt-0">
+              <div>
+                PROTOCOL V1.0.0
+                <br />
+                追责内核
+              </div>
             <div>
               SYS <span className="text-[#E8E6E0]">{pingVal}</span>ms
             </div>
           </div>
         </div>
 
-        <main className="w-full bg-[#0A0A0A]">
-          <section className="grid grid-cols-1 border-b border-[rgba(232,230,224,0.1)] md:grid-cols-2">
-            <div className="flex min-h-[40vh] flex-col justify-between border-b border-[rgba(232,230,224,0.1)] p-10 transition-colors duration-500 hover:bg-[#111] md:border-b-0 md:border-r md:border-[rgba(232,230,224,0.1)] md:p-20">
-              <div className="mb-12 font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-widest text-[#888880]">// The Status Quo</div>
-              <div>
-                <h2 className="mb-6 text-3xl font-light tracking-tight text-[#E8E6E0] md:text-4xl">Outputs Without Obligation</h2>
-                <p className="max-w-md text-[0.95rem] font-light leading-relaxed text-[#888880]">
-                  Current AI agents can recommend, select, and act, but they rarely accept a binding obligation. When they miss budget limits, choose the wrong vendor, or violate a policy boundary, users get outputs without enforceable accountability.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex min-h-[40vh] flex-col justify-between p-10 transition-colors duration-500 hover:bg-[#111] md:p-20">
-              <div className="mb-12 flex items-center gap-2 font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-widest text-[#E8E6E0]">
-                <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                // The TrustCommit Standard
-              </div>
-              <div>
-                <h2 className="mb-6 text-3xl font-light tracking-tight text-[#E8E6E0] md:text-4xl">Commitment Before Action</h2>
-                <p className="max-w-md text-[0.95rem] font-light leading-relaxed text-[#888880]">
-                  TrustCommit makes the agent accept a covenant before it acts. The runtime then binds execution, evidence, receipts, verification, and dispute resolution to that exact commitment.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="border-b border-[rgba(232,230,224,0.1)] p-10 md:p-20">
-            <div className="mb-20 max-w-3xl">
-              <h2 className="mb-6 text-4xl font-light tracking-tight text-[#E8E6E0] md:text-5xl">Architecture of Accountability</h2>
-              <p className="text-lg font-light text-[#888880]">A procurement covenant becomes a signed obligation, an evidence trail, and a disputeable settlement path.</p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-x-12 gap-y-20 md:grid-cols-3">
-              {[
-                {
-                  num: "01",
-                  label: "Identity",
-                  title: "Agent Identity",
-                  desc: "Every accountable action starts with a named execution authority. Identity, operator rights, and past receipts stay attached to the same agent surface."
-                },
-                {
-                  num: "02",
-                  label: "Commitment",
-                  title: "Procurement Covenants",
-                  desc: "Before execution, the agent accepts a procurement covenant with explicit budget, selection, and policy boundaries. The obligation exists before the output."
-                },
-                {
-                  num: "03",
-                  label: "Execution",
-                  title: "Signed Execution",
-                  desc: "The agent inspects evidence, produces a vendor decision, and signs a proof bundle that ties the decision to the covenant it accepted."
-                },
-                {
-                  num: "04",
-                  label: "Verification",
-                  title: "Independent Verification",
-                  desc: "Anyone can replay validation against the preserved evidence and receipt chain to determine whether the agent stayed inside its procurement covenant."
-                },
-                {
-                  num: "05",
-                  label: "Resolution",
-                  title: "Dispute and Consequence",
-                  desc: "If the receipt trail or evidence no longer supports the decision, the task can be challenged, resolved, and settled with explicit consequences."
-                }
-              ].map((item) => {
-                const featured = item.num === "02" || item.num === "04";
-                return (
-                <div key={item.num} className={`group ${featured ? "md:-mt-6" : ""}`}>
-                  <div className={`mb-6 flex justify-between border-b pb-4 font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-widest ${featured ? "border-[rgba(232,230,224,0.28)] text-[#E8E6E0]" : "border-[rgba(232,230,224,0.1)] text-[#888880]"}`}>
-                    <span>{item.num}</span>
-                    <span>{item.label}</span>
-                  </div>
-                  <h3 className={`mb-4 text-2xl font-light transition-colors group-hover:text-white ${featured ? "text-white md:text-[2rem]" : "text-[#E8E6E0]"}`}>{item.title}</h3>
-                  <p className={`text-[0.95rem] font-light leading-relaxed ${featured ? "text-[#b6b2a9]" : "text-[#888880]"}`}>{item.desc}</p>
-                </div>
-              )})}
-
-              <Link
-                to="/console"
-                className="group relative flex min-h-[200px] flex-col items-center justify-center overflow-hidden border border-[rgba(232,230,224,0.1)] transition-colors duration-300 hover:border-[rgba(232,230,224,0.3)]"
-              >
-                <div className="absolute inset-0 translate-y-full bg-[rgba(255,255,255,0.05)] transition-transform duration-500 ease-out group-hover:translate-y-0" />
-                <span className="relative z-10 flex items-center gap-2 font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-widest text-[#E8E6E0]">
-                  Open Live Console <span className="font-sans text-lg">→</span>
-                </span>
-              </Link>
-            </div>
-
-            <div className="mt-20 grid grid-cols-1 gap-8 border-t border-[rgba(232,230,224,0.1)] pt-8 md:grid-cols-[0.9fr_1.1fr]">
-              <div>
-                <div className="font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-widest text-[#888880]">Operational Surface</div>
-                <p className="mt-4 max-w-md text-[0.95rem] font-light leading-relaxed text-[#b6b2a9]">
-                  The console exposes the operational side of the protocol: active procurement covenants, execution traces, evidence packs, receipt chains, verifier state, and dispute lanes.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3 font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-[0.22em] text-[#E8E6E0] md:grid-cols-4">
-                <div className="border-t border-[rgba(232,230,224,0.16)] pt-3">Covenants</div>
-                <div className="border-t border-[rgba(232,230,224,0.16)] pt-3">Evidence Packs</div>
-                <div className="border-t border-[rgba(232,230,224,0.16)] pt-3">Receipt Chain</div>
-                <div className="border-t border-[rgba(232,230,224,0.16)] pt-3">Dispute Lane</div>
-              </div>
-            </div>
-          </section>
-
-          <section className="grid grid-cols-1 md:grid-cols-2">
-            <div className="flex flex-col justify-center border-b border-[rgba(232,230,224,0.1)] p-10 md:border-b-0 md:border-r md:border-[rgba(232,230,224,0.1)] md:p-20">
-              <h2 className="mb-5 text-4xl font-light tracking-tight text-[#E8E6E0] md:text-5xl">Agents should not be trusted by vibes.</h2>
-              <p className="mb-10 max-w-xl text-[0.95rem] font-light leading-relaxed text-[#888880]">
-                Open the accountability layer and inspect how TrustCommit turns execution into commitments, proofs, receipts, and consequences.
-              </p>
-              <div className="flex flex-col gap-4 sm:flex-row">
-                <Link
-                  to="/console"
-                  className="w-fit bg-[#E8E6E0] px-8 py-4 font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-widest text-[#0A0A0A] transition-colors duration-300 hover:bg-white"
-                >
-                  Open Accountability Layer
-                </Link>
-                <a
-                  href="https://github.com/Ser4nu11EN7/TrustCommit"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-fit border border-[rgba(232,230,224,0.1)] px-8 py-4 font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-widest text-[#E8E6E0] transition-colors duration-300 hover:border-[rgba(232,230,224,0.3)]"
-                >
-                  Read the Protocol
-                </a>
-              </div>
-            </div>
-
-            <div className="flex flex-col justify-end gap-4 bg-[#080808] p-10 text-right font-['Fragment_Mono'] text-[0.65rem] text-[#888880] md:p-20">
-              <div className="mb-8 flex justify-end gap-6">
-                <a href="https://github.com/Ser4nu11EN7/TrustCommit" target="_blank" rel="noreferrer" className="transition-colors hover:text-[#E8E6E0]">GitHub</a>
-                <a href="https://github.com/Ser4nu11EN7/TrustCommit/blob/master/docs/SUBMISSION.md" target="_blank" rel="noreferrer" className="transition-colors hover:text-[#E8E6E0]">Submission</a>
-                <Link to="/console" className="transition-colors hover:text-[#E8E6E0]">Console</Link>
-              </div>
-              <p>© 2026 TrustCommit Network.</p>
-              <p>Cryptography by design. Accountability by default.</p>
-            </div>
-          </section>
-        </main>
       </div>
     </div>
   );
