@@ -20,7 +20,7 @@ The deployment output should give you real contract addresses and explorer-verif
 - Foundry installed: `forge --version`
 - Node.js 24+
 - funded deployer wallet on the target network
-- `.env` populated from [.env.example](/C:/Users/SerEN/TrustCommit/.env.example)
+- `.env` populated from [.env.example](./.env.example)
 
 ## Environment
 
@@ -75,11 +75,11 @@ Custom RPC:
 DEPLOY_RPC_URL=https://your-rpc.example npm run deploy:stack -- --network custom
 ```
 
-The deploy script runs [DeployTrustCommitStack.s.sol](/C:/Users/SerEN/TrustCommit/script/DeployTrustCommitStack.s.sol), which:
+The deploy script runs [DeployTrustCommitStack.s.sol](./script/DeployTrustCommitStack.s.sol), which:
 
 1. deploys a mock token if no token addresses are provided
-2. deploys [TrustRegistry.sol](/C:/Users/SerEN/TrustCommit/contracts/TrustRegistry.sol)
-3. deploys [Covenant.sol](/C:/Users/SerEN/TrustCommit/contracts/Covenant.sol)
+2. deploys [TrustRegistry.sol](./contracts/TrustRegistry.sol)
+3. deploys [Covenant.sol](./contracts/Covenant.sol)
 4. grants `COVENANT_ROLE` on the registry to the covenant contract
 
 ## Save the Addresses
@@ -223,4 +223,4 @@ After deployment works, do not immediately polish the UI. First:
 
 1. run the runtime against the deployed contracts
 2. capture real tx hashes
-3. update README and demo script with those receipts
+3. update README and submission materials with those receipts

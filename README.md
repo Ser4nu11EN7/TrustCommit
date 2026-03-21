@@ -4,7 +4,7 @@ TrustCommit makes agents sign for what they do.
 
 ## Agent Participation
 
-This project was built through human-agent collaboration. See [CONVERSATION_LOG.md](docs/CONVERSATION_LOG.md) for the complete design process, including adversarial brainstorming between Claude and Codex that shaped the core architecture.
+This project was built through human-agent collaboration. See [CONVERSATION_LOG.md](./docs/CONVERSATION_LOG.md) for the complete design and implementation process, including adversarial brainstorming between Claude and Codex that shaped the core architecture.
 
 ## Overview
 
@@ -81,8 +81,8 @@ npm run runtime -- demo:remediation
 
 ### Public Deployment
 
-- Deployment guide: [DEPLOYMENT.md](/C:/Users/SerEN/TrustCommit/DEPLOYMENT.md)
-- Submission framing: [SUBMISSION.md](/C:/Users/SerEN/TrustCommit/docs/SUBMISSION.md)
+- Deployment guide: [DEPLOYMENT.md](./DEPLOYMENT.md)
+- Submission framing: [SUBMISSION.md](./docs/SUBMISSION.md)
 
 ### Key Features
 
@@ -191,7 +191,7 @@ npm test
 ```
 
 ### Agent Runtime MVP
-The repo now includes a CLI-first agent runtime under [runtime/src/cli.ts](/C:/Users/SerEN/TrustCommit/runtime/src/cli.ts). It implements the hackathon MVP:
+The repo now includes a CLI-first agent runtime under [runtime/src/cli.ts](./runtime/src/cli.ts). It implements the hackathon MVP:
 
 - `creator agent`: normalizes a structured task spec into covenant-ready data
 - `executor agent`: inspects the workspace, generates a structured artifact, hashes it, and submits completion onchain
@@ -283,7 +283,7 @@ npm run deploy:stack
 npm run verify:deployment
 ```
 
-The deploy flow uses [DeployTrustCommitStack.s.sol](/C:/Users/SerEN/TrustCommit/script/DeployTrustCommitStack.s.sol). If `STAKE_TOKEN_ADDRESS` and `PAYMENT_TOKEN_ADDRESS` are unset, it deploys a shared mock ERC20 automatically and uses it for both stake and payment.
+The deploy flow uses [DeployTrustCommitStack.s.sol](./script/DeployTrustCommitStack.s.sol). If `STAKE_TOKEN_ADDRESS` and `PAYMENT_TOKEN_ADDRESS` are unset, it deploys a shared mock ERC20 automatically and uses it for both stake and payment.
 
 ### Public Proof Flow
 Once public addresses are saved into `.env`, prepare the runtime and public actors:

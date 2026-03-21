@@ -127,7 +127,7 @@ async function makeTaskDetails(): Promise<TaskDetails> {
     evidence: {
       schemaVersion: "v1",
       taskId: task.id,
-      workspaceRoot: "C:/Users/SerEN/TrustCommit",
+      workspaceRoot: "/workspace/trustcommit",
       observedAt: Date.now(),
       topFiles: ["demo-fixtures/procurement-brief.md", "demo-fixtures/vendor-a.json"],
       fileCount: 2,

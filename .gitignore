@@ -21,3 +21,5 @@ console_history.txt
 full_log.txt
 git_diff_*.txt
 git_log_*.txt
+docs/review/
+stitch_exports/

@@ -74,7 +74,7 @@ Working one-liner:
 - explorer-verifiable tx hashes
 - short demo video
 - public repo
-- conversation log: `docs/CONVERSATION_LOG.zh-CN.md`
+- conversation log: `docs/CONVERSATION_LOG.md`
 - judge evidence pack: `docs/JUDGE_EVIDENCE_PACK.zh-CN.md`
 - README with architecture and receipt flow
 

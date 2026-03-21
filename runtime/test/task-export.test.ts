@@ -18,6 +18,10 @@ import { exportPortableTaskBundle } from "../src/exporters/task-bundle.js";
 test("portable task bundle export strips local absolute paths and emits a manifest", () => {
   const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "trustcommit-export-workspace-"));
   const exportRoot = fs.mkdtempSync(path.join(os.tmpdir(), "trustcommit-export-output-"));
+  const artifactAbsolutePath = path.join(workspaceRoot, ".trustcommit", "artifacts", "task_export", "artifact.json");
+  const agentLogAbsolutePath = path.join(workspaceRoot, ".trustcommit", "artifacts", "task_export", "agent_log.json");
+  const proofBundleAbsolutePath = path.join(workspaceRoot, ".trustcommit", "artifacts", "task_export", "proof_bundle.json");
+  const portableWorkspaceRoot = workspaceRoot.replace(/\\/g, "/");
   const snapshotPath = path.join(workspaceRoot, ".trustcommit", "artifacts", "task_export", "evidence_snapshots", "demo-fixtures", "brief.md");
   fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
   fs.writeFileSync(snapshotPath, "brief");
@@ -36,7 +40,7 @@ test("portable task bundle export strips local absolute paths and emits a manife
     createdBy: "mock",
     proofHash: "0x2222222222222222222222222222222222222222222222222222222222222222",
     taskHash: "0x3333333333333333333333333333333333333333333333333333333333333333",
-    artifactPath: "C:/Users/SerEN/TrustCommit/.trustcommit/artifacts/task_export/artifact.json",
+    artifactPath: artifactAbsolutePath,
     createdAt: Date.now(),
     updatedAt: Date.now()
   };
@@ -111,9 +115,9 @@ test("portable task bundle export strips local absolute paths and emits a manife
         covenantId: task.covenantId
       },
       executionArtifacts: {
-        artifactPath: "C:/Users/SerEN/TrustCommit/.trustcommit/artifacts/task_export/artifact.json",
-        logPath: "C:/Users/SerEN/TrustCommit/.trustcommit/artifacts/task_export/agent_log.json",
-        proofBundlePath: "C:/Users/SerEN/TrustCommit/.trustcommit/artifacts/task_export/proof_bundle.json"
+        artifactPath: artifactAbsolutePath,
+        logPath: agentLogAbsolutePath,
+        proofBundlePath: proofBundleAbsolutePath
       },
       onchain: {
         acceptTxHash: null,
@@ -125,7 +129,7 @@ test("portable task bundle export strips local absolute paths and emits a manife
         resolveTxHash: null
       }
     },
-    artifactPath: "C:/Users/SerEN/TrustCommit/.trustcommit/artifacts/task_export/artifact.json",
+    artifactPath: artifactAbsolutePath,
     proofHash: task.proofHash!,
     steps: []
   };
@@ -144,8 +148,8 @@ test("portable task bundle export strips local absolute paths and emits a manife
     executionTrace: [],
     executionTraceHash: "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
     validatorResultsHash: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-    artifactPath: "C:/Users/SerEN/TrustCommit/.trustcommit/artifacts/task_export/artifact.json",
-    agentLogPath: "C:/Users/SerEN/TrustCommit/.trustcommit/artifacts/task_export/agent_log.json",
+    artifactPath: artifactAbsolutePath,
+    agentLogPath: agentLogAbsolutePath,
     createdAt: Date.now(),
     operatorAttestation: null,
     proofHash: task.proofHash!
@@ -187,7 +191,7 @@ test("portable task bundle export strips local absolute paths and emits a manife
       verificationSnapshot: null,
       receiptSnapshot: receiptRecord.receipts,
       artifactSnapshot: {
-        artifactPath: "C:/Users/SerEN/TrustCommit/.trustcommit/artifacts/task_export/artifact.json",
+        artifactPath: artifactAbsolutePath,
         summary: null,
         payloadHash: null,
         proofBundleHash: null
@@ -282,8 +286,11 @@ test("portable task bundle export strips local absolute paths and emits a manife
   assert.equal(manifest.taskId, task.id);
   assert.ok(manifest.includedFiles.includes("portable_bundle.json"));
   assert.ok(fs.existsSync(path.join(exported.outputDir, ".trustcommit", "artifacts", "task_export", "evidence_snapshots", "demo-fixtures", "brief.md")));
-  assert.equal(agentLogExport.includes("C:/Users/SerEN"), false);
-  assert.equal(proofBundleExport.includes("C:/Users/SerEN"), false);
+  assert.equal(agentLogExport.includes(portableWorkspaceRoot), false);
+  assert.equal(agentLogExport.includes(workspaceRoot), false);
+  assert.equal(proofBundleExport.includes(portableWorkspaceRoot), false);
+  assert.equal(proofBundleExport.includes(workspaceRoot), false);
   assert.equal(chainContextExport.includes("127.0.0.1"), false);
-  assert.equal(arbiterLogExport.includes("C:/Users/SerEN"), false);
+  assert.equal(arbiterLogExport.includes(portableWorkspaceRoot), false);
+  assert.equal(arbiterLogExport.includes(workspaceRoot), false);
 });

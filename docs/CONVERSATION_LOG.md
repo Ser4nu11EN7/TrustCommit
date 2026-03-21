@@ -1,274 +1,274 @@
-# TrustCommit 完整生命周期日志（中文版）
+# TrustCommit Full Lifecycle Log
 
-> 说明：
-> - 以下按时间顺序整理
-> - 只保留时间、角色、讨论和决策
-> - 不插入外部文件路径、链接或引用格式
-> - 时间尽量精确到秒；无法精确到秒的部分按当天阶段记录
-
----
-
-## 2026-03-17 12:50:37 项目起点：确认是否参加 Synthesis
-
-**Human**：给出 Synthesis Hackathon 的活动介绍，希望先判断这是不是值得参加的比赛。  
-**Claude**：先梳理活动主题、奖金池、评审方式和时间窗口，确认这不是普通黑客松，而是围绕 agent 支付、信任、协作、隐私的以太坊 Agent 黑客松。  
-**Decision**：确定进入项目方向探索阶段，不直接开始写代码。
+> Notes:
+> - Ordered chronologically
+> - Keeps only time, roles, discussion, and decisions
+> - Does not include external file paths, links, or citation formatting
+> - Timestamps are as exact as possible; when exact seconds were unavailable, entries were grouped by stage of day
 
 ---
 
-## 2026-03-17 12:51:43 约束条件明确
+## 2026-03-17 12:50:37 Project Start: deciding whether to join Synthesis
 
-**Human**：说明自己没有 agent 开发经验，但有 web 开发经验，而且只有一个人，希望做“小而美”的方向。  
-**Claude**：先按单人、短周期、范围可控来估方向，不做一开始就过重的平台。  
-**Decision**：项目方向筛选标准从“酷不酷”变成“单人能做、真实有用、能演示清楚”。
-
----
-
-## 2026-03-17 12:55:10 真实痛点成为第一标准
-
-**Human**：强调需求要解决真实存在的痛点，而不是为了做 agent 而做 agent，希望从真实抱怨和真实 friction 出发。  
-**Claude**：转入调研模式，不再只给创意点子，而是围绕以太坊生态真实问题来找方向。  
-**Decision**：项目后续所有方向都必须经过“真实痛点”这一关。
+**Human**: Shared the Synthesis Hackathon announcement and asked whether the event was worth entering.  
+**Claude**: First mapped the event themes, prize pool, judging mode, and timeline, confirming this was not a generic hackathon but an Ethereum agent hackathon centered on payments, trust, cooperation, and privacy.  
+**Decision**: Enter project-direction exploration instead of writing code immediately.
 
 ---
 
-## 2026-03-17 13:12:49 比赛规则和平台能力进入上下文
+## 2026-03-17 12:51:43 Constraints made explicit
 
-**Claude**：拉取并阅读 Synthesis 平台的 skill / API 说明，确认报名、身份、项目 draft 和后续提交的基本形态。  
-**Decision**：项目从一开始就按“真实可报名、真实可提交”的标准来推进，而不是脱离平台要求独自构建。
-
----
-
-## 2026-03-17 13:19:49 对抗式 brainstorm 工作流建立
-
-**Human**：要求 Claude 和 Codex 分头调研、独立立场、彼此挑刺，不能互相客套，不允许无脑 1.0 / 1.1 / 1.2 式堆叠。  
-**Claude**：确认理解：不是单方面给方案，而是多轮对抗、批评、反驳，直到收敛。  
-**Decision**：正式采用“Claude ↔ Codex 对抗式方向讨论”作为项目 genesis 机制。
+**Human**: Explained that they had no prior agent-development experience, but did have web-development experience, were working solo, and wanted a "small but strong" direction.  
+**Claude**: Reframed the search around solo scope, short timeline, and controllable complexity rather than starting with an overly heavy platform idea.  
+**Decision**: Direction screening shifted from "is this cool?" to "can one person build this, is it genuinely useful, and can it be demoed clearly?"
 
 ---
 
-## 2026-03-17 13:26:58 讨论规则被正式固定
+## 2026-03-17 12:55:10 Real pain became the first filter
 
-**Human**：补充要求：以太坊为主场，允许参考其他链但不能生搬硬套；至少 5 轮起步；超过 10 轮需要阶段性输出，防止死循环和漂移。  
-**Claude**：复述规则并确认执行。  
-**Decision**：讨论从普通 brainstorming 升级成有明确边界和节奏控制的设计流程。
-
----
-
-## 2026-03-17 13:28:06 多 agent 协作能力进入流程
-
-**Human**：要求先测试 Codex MCP 或相关调用是否可行，不急着立刻开始讨论。  
-**Claude**：开始检查 Codex 相关调用能力与工作流可行性。  
-**Decision**：项目从一开始就不是“单模型给建议”，而是围绕多 agent 协作 / 对抗的工作流展开。
+**Human**: Emphasized that the project must solve a real pain point, not become "an agent project for the sake of agents," and should start from real complaints and real friction.  
+**Claude**: Switched into research mode, no longer just producing idea lists, but instead searching for real Ethereum-ecosystem problems.  
+**Decision**: Every later direction had to pass the "real pain point" filter.
 
 ---
 
-## 2026-03-17 下午 第一轮核心分歧：Trust Oracle vs Agent Covenant
+## 2026-03-17 13:12:49 Contest rules and platform capabilities entered context
 
-**Claude**：提出 `Agent Trust Oracle` 方向，认为 Synthesis 的关键在于 agent 间的信任验证与信誉系统。  
-**Codex**：强力反驳，指出这会滑向中心化评分 API，而且无法解决“履约是否真实发生”的问题。  
-**Codex**：提出 `Agent Covenant` 方向，主张事前约束、托管、证明、自动结算、争议处理。  
-**Decision**：第一次出现后来 TrustCommit 的核心胚胎：不是做一个“给 agent 打分”的系统，而是做“让 agent 先承诺、再提交证明、最后结算或被质疑”的系统。
+**Claude**: Pulled and read the Synthesis platform skill / API instructions, confirming the shape of registration, identity, project drafts, and later submission flow.  
+**Decision**: From the beginning, the project would be developed to be truly registerable and truly submittable, not as an isolated side build detached from the platform.
 
 ---
 
-## 2026-03-17 下午 多轮争论后的收敛：从“信任评分”转向“可执行承诺”
+## 2026-03-17 13:19:49 Adversarial brainstorming workflow established
 
-**Claude**：持续质疑 escrow、validator、冷启动与资金效率问题。  
-**Codex**：持续强调“事后评分不如事前承诺 + 证明 + 争议”的闭环更贴真实痛点。  
-**Human**：要求双方不要空谈概念，要持续逼近真实以太坊 Agent 场景与高获奖概率方向。  
-**Decision**：项目主轴从“信誉系统”进一步收敛成“Agent Covenant / Accountable Agent Infrastructure”。
-
----
-
-## 2026-03-17 15:15:12 brainstorm 阶段被整理成文档
-
-**Claude / Codex**：前几轮对抗式讨论被沉淀成独立 brainstorm 记录。  
-**Decision**：项目 genesis 不再只存在于会话里，而开始形成可追溯的设计历史。
+**Human**: Required Claude and Codex to research independently, hold independent positions, challenge each other, avoid politeness, and reject mindless "1.0 / 1.1 / 1.2" iteration.  
+**Claude**: Confirmed that the process should not be one-sided proposal delivery, but repeated critique, pushback, and convergence.  
+**Decision**: Officially adopted a "Claude ↔ Codex adversarial direction discussion" as the project genesis mechanism.
 
 ---
 
-## 2026-03-18 11:01:48 架构决策阶段开始
+## 2026-03-17 13:26:58 Discussion rules formally locked
 
-**Human**：要求把前面讨论过的机制问题正式落成可执行决策。  
-**Claude**：围绕完成确认机制、裁决者角色、证据存储、最小报酬、batch 操作等给出结构化分析。  
-**Decision**：项目从“方向”进入“协议设计”，开始形成真实可实现的 Covenant 合约骨架。
-
----
-
-## 2026-03-18 12:06:49 Covenant 合约设计正式成型
-
-**Human**：要求把 Covenant 这条线讲清楚，并判断 MVP 与后续升级路径。  
-**Claude**：提出 covenant 生命周期、状态迁移、争议期、裁决者、多签到 DAO 的路径。  
-**Decision**：TrustCommit 的协议层开始明确：TrustRegistry + Covenant，而不是泛化的 agent 平台。
+**Human**: Added hard constraints: Ethereum would be the primary arena; other chains could be referenced but not copied mechanically; discussions should begin with at least 5 rounds; anything beyond 10 rounds needed structured checkpoint outputs to avoid drift.  
+**Claude**: Restated the rules and confirmed execution.  
+**Decision**: The discussion process became a bounded design workflow rather than casual brainstorming.
 
 ---
 
-## 2026-03-19 13:44:36 正式报名 Synthesis
+## 2026-03-17 13:28:06 Multi-agent collaboration became part of the process
 
-**Human**：提供报名需要的人类信息与 agent 信息。  
-**Codex**：代为完成报名，并确认队伍与 project draft 已存在。  
-**Decision**：项目进入真实比赛状态，不再只是探索性质的仓库。
-
----
-
-## 2026-03-19 15:58:12 第一版 accountable agent stack 提交
-
-**Codex**：完成第一版本地 git 提交，确立 TrustRegistry / Covenant / runtime 的基础形态。  
-**Decision**：项目进入连续实现阶段，开始有可追踪的代码演进。
+**Human**: Asked to test whether Codex MCP or related invocation flows were workable before immediately starting design discussion.  
+**Claude**: Began checking Codex-related invocation capability and workflow feasibility.  
+**Decision**: The project would not begin as "one model gives suggestions," but as a multi-agent collaborative and adversarial build loop.
 
 ---
 
-## 2026-03-19 20:44:06 accountability core 深化
+## 2026-03-17 Afternoon First major split: Trust Oracle vs Agent Covenant
 
-**External Codex / Human / Codex 主工作流**：围绕 proof、verification、dispute、arbiter 等问题不断收紧项目的“真的可追责”含义。  
-**Decision**：TrustCommit 不再只是“agent 信任基础设施”，而开始明确成为“accountable agent infrastructure”。
-
----
-
-## 2026-03-20 12:54:43 self-custody 完成
-
-**Human**：确认接管地址。  
-**Codex**：完成 self-custody transfer 流程。  
-**Decision**：参赛主体不再停留在 custodial 状态，项目具备正式提交前提。
+**Claude**: Proposed an `Agent Trust Oracle` direction, arguing that Synthesis was centrally about trust verification and reputation among agents.  
+**Codex**: Strongly pushed back, arguing this would collapse into a centralized scoring API and would still fail to answer whether performance actually occurred.  
+**Codex**: Proposed an `Agent Covenant` direction instead, centered on pre-commitment, escrow, proof, automated settlement, and dispute handling.  
+**Decision**: The first embryo of what later became TrustCommit appeared: not "a system that scores agents," but "a system where agents commit first, submit proof, and then either settle or get challenged."
 
 ---
 
-## 2026-03-20 19:57:01 Console 接入真实 runtime
+## 2026-03-17 Afternoon Convergence after repeated argument: from trust scoring to enforceable commitments
 
-**Human**：明确前端不能只是展示壳子，而要接真实数据。  
-**Codex**：把 console 从静态概念页推进成真实控制台。  
-**Decision**：项目开始从“协议 + runtime”进入“可操作产品界面”阶段。
-
----
-
-## 2026-03-20 19:58:48 - 21:39:42 产品面与公开证据准备并行推进
-
-这一段发生了几件事：
-
-**Codex**：
-- 清理旧 console 残留
-- 打磨 live console interactions
-- 收紧 artifact inspection
-- 统一首页 / console / submission 的主叙事
-- 准备 public deployment 和 public proof 流程
-
-**Human**：
-- 对首页和 console 的叙事、视觉、信息层级持续给出明确反馈
-
-**Decision**：
-- 项目不再只是“能跑”
-- 开始同时具备 judge-facing surface 和 public proof 准备能力
+**Claude**: Kept questioning escrow costs, validator assumptions, cold-start issues, and capital efficiency.  
+**Codex**: Kept insisting that retrospective scoring was weaker than a loop of commitment + proof + dispute.  
+**Human**: Required both sides to stop speaking in abstractions and keep converging toward real Ethereum-agent use cases with actual prize potential.  
+**Decision**: The project axis moved from "reputation system" toward "Agent Covenant / Accountable Agent Infrastructure."
 
 ---
 
-## 2026-03-21 08:59:29 Base Sepolia 部署完成
+## 2026-03-17 15:15:12 Brainstorm phase captured into documents
 
-**Human**：解决 Base Sepolia 测试币问题。  
-**Codex**：完成真实公开链部署。  
-**Decision**：TrustCommit 不再停留在本地链或 Anvil，正式具备公开链证据。
-
----
-
-## 2026-03-21 09:06:31 happy path public proof 导出
-
-**Codex**：跑通公开 happy path，导出 bundle、receipt、proof、verifier 结果。  
-**Decision**：项目具备第一条公开可验证执行链。
+**Claude / Codex**: Early rounds of adversarial discussion were written down into standalone brainstorm records.  
+**Decision**: The project genesis no longer existed only inside chat context; it started to become traceable design history.
 
 ---
 
-## 2026-03-21 09:12:15 dispute path public proof 导出
+## 2026-03-18 11:01:48 Architecture decision phase began
 
-**Codex**：跑通公开 dispute path，包含 create / accept / submit / dispute / resolve。  
-**Decision**：TrustCommit 的核心价值不再只是 happy path，而是真正具备“可质疑、可裁决”的公开证据链。
+**Human**: Asked for prior mechanism discussion to be turned into executable decisions.  
+**Claude**: Produced structured analysis around completion confirmation, arbiter roles, evidence storage, minimum reward, and batch operations.  
+**Decision**: The project moved from "direction" into "protocol design," and a real Covenant contract skeleton began to form.
 
 ---
 
-## 2026-03-21 09:14:13 public proof flow 被写入仓库历史
+## 2026-03-18 12:06:49 Covenant contract design took shape
 
-**Codex**：将 Base Sepolia public proof flow 作为正式提交记录进入 git。  
-**Decision**：公开部署与证据导出不再是临时动作，而是项目历史的一部分。
+**Human**: Asked for the Covenant line to be made explicit and for MVP versus upgrade path to be clarified.  
+**Claude**: Proposed covenant lifecycle, state transitions, dispute windows, arbiter roles, and a later multi-sig / DAO path.  
+**Decision**: TrustCommit’s protocol layer became explicit: TrustRegistry + Covenant, not a generic agent platform.
+
+---
+
+## 2026-03-19 13:44:36 Official Synthesis registration completed
+
+**Human**: Supplied the required human and agent registration information.  
+**Codex**: Completed registration on the user’s behalf and confirmed the team and project draft existed.  
+**Decision**: The project entered real contest state rather than remaining an exploratory repository.
+
+---
+
+## 2026-03-19 15:58:12 First accountable-agent stack committed
+
+**Codex**: Completed the first local git commit establishing the core form of TrustRegistry / Covenant / runtime.  
+**Decision**: The project entered continuous implementation mode, with traceable code evolution.
+
+---
+
+## 2026-03-19 20:44:06 Accountability core deepened
+
+**External Codex / Human / Codex main workflow**: Tightened the meaning of "actually accountable" around proof, verification, dispute, and arbiter mechanics.  
+**Decision**: TrustCommit stopped being "agent trust infrastructure" in a vague sense and became more explicitly "accountable agent infrastructure."
+
+---
+
+## 2026-03-20 12:54:43 Self-custody completed
+
+**Human**: Confirmed the takeover address.  
+**Codex**: Completed the self-custody transfer flow.  
+**Decision**: The submission identity no longer remained in a custodial state and satisfied the prerequisites for a formal contest submission.
+
+---
+
+## 2026-03-20 19:57:01 Console connected to the real runtime
+
+**Human**: Made it explicit that the frontend could not remain a shell and had to connect to real data.  
+**Codex**: Moved the console from a static concept page into a real control surface.  
+**Decision**: The project began moving from "protocol + runtime" into an operable product interface.
+
+---
+
+## 2026-03-20 19:58:48 - 21:39:42 Product surface and public evidence progressed in parallel
+
+Several things happened during this span:
+
+**Codex**:
+- cleaned old console residue
+- refined live console interactions
+- tightened artifact inspection
+- unified the homepage / console / submission narrative
+- prepared public deployment and public proof flows
+
+**Human**:
+- kept giving direct feedback on homepage and console narrative, visual hierarchy, and information structure
+
+**Decision**:
+- the project was no longer merely "able to run"
+- it started to gain both a judge-facing surface and a public-proof path
+
+---
+
+## 2026-03-21 08:59:29 Base Sepolia deployment completed
+
+**Human**: Solved the Base Sepolia faucet / test-token problem.  
+**Codex**: Completed real public-chain deployment.  
+**Decision**: TrustCommit no longer lived only on local chain or Anvil; it now had public-chain evidence.
+
+---
+
+## 2026-03-21 09:06:31 Happy-path public proof exported
+
+**Codex**: Ran the public happy path end to end and exported the bundle, receipt, proof, and verifier results.  
+**Decision**: The project gained its first publicly verifiable execution chain.
+
+---
+
+## 2026-03-21 09:12:15 Dispute-path public proof exported
+
+**Codex**: Ran the public dispute path including create / accept / submit / dispute / resolve.  
+**Decision**: TrustCommit’s core value was no longer only a happy path; it now had a public evidence chain for challenge and adjudication.
+
+---
+
+## 2026-03-21 09:14:13 Public proof flow entered repository history
+
+**Codex**: Wrote the Base Sepolia public proof flow into git history as a formal project record.  
+**Decision**: Public deployment and evidence export stopped being temporary actions and became part of project history.
 
 ---
 
 ## 2026-03-21 10:22:11 Claude hostile prize review
 
-**Claude**：从获奖视角严厉批评项目，指出最大短板不是技术深度，而是：
-- Agent 真实贡献证据
-- 公开演示
-- 实用性叙事
+**Claude**: Critiqued the project harshly from a prize-winning perspective and argued that the main weaknesses were not technical depth, but:
+- proof of real agent contribution
+- public demonstration
+- practical narrative
 
-**Decision**：项目进入“不是继续堆功能，而是补 submission proof”的阶段。
+**Decision**: The project moved into a "stop piling on features; fill submission proof gaps" phase.
 
 ---
 
 ## 2026-03-21 10:31:21 Claude narrative restructure
 
-**Claude**：给出一套更强的叙事结构建议，包括首页、console、submission 应该怎么重新组织。  
-**Human / Codex**：没有全盘照搬，而是吸收其结构性建议，再按 TrustCommit 的真实主线改写。  
-**Decision**：叙事层开始从“概念说明”转向“面向评审的结构化表达”。
+**Claude**: Proposed a stronger narrative structure, including how the homepage, console, and submission materials should be reorganized.  
+**Human / Codex**: Did not copy it wholesale, but absorbed the structural advice and rewrote it around TrustCommit’s actual core line.  
+**Decision**: The narrative layer began shifting from "concept explanation" toward judge-oriented structured communication.
 
 ---
 
-## 2026-03-21 12:16:12 broadened narrative review
+## 2026-03-21 12:16:12 Broadened narrative review
 
-**Human**：指出将叙事过度收敛到 procurement 场景会让 category 被 example 吃掉。  
-**Claude（经 review）/ Codex**：认可应回到更广的 accountable agents / agents under commitments，而把 procurement 降为最强示例。  
-**Decision**：产品类别与 demo 示例的层级被重新拉正。
-
----
-
-## 2026-03-21 12:24:54 submission frame 同步更新
-
-**Codex**：将主叙事、赛道定位、公开证据、judge lens 写入 submission 文档。  
-**Decision**：技术实现、公开证据、提交文案开始对齐。
+**Human**: Pointed out that over-collapsing the narrative into procurement would let the example swallow the category.  
+**Claude (after review) / Codex**: Agreed that the framing should return to broader accountable agents / agents under commitments, while keeping procurement as the clearest example.  
+**Decision**: The hierarchy between product category and demo example was corrected.
 
 ---
 
-## 2026-03-21 14:05:12 landing / console 文案收敛
+## 2026-03-21 12:24:54 Submission frame updated in sync
 
-**Human**：持续要求：
-- 首页极简
-- console 才是核心
-- 不允许说明型废话遮住内部运作
-
-**Codex**：根据这些要求不断压缩首页，并让 console 更接近真实工作台。  
-**Decision**：项目 judge-facing surface 与真实产品结构逐渐统一。
+**Codex**: Wrote the main narrative, track positioning, public evidence, and judge lens into the submission document.  
+**Decision**: Technical implementation, public evidence, and submission framing started to align.
 
 ---
 
-## 四、这份生命周期日志证明了什么
+## 2026-03-21 14:05:12 Landing / console copy narrowed and tightened
 
-它证明了三件事：
+**Human**: Repeatedly required:
+- the homepage must stay minimal
+- the console must be the real center
+- explanatory filler must not obscure the actual internal operation
 
-### 1. 项目最初不是“先想好再执行”
+**Codex**: Kept compressing the homepage and pushed the console closer to a real working surface.  
+**Decision**: The judge-facing surface and the actual product structure increasingly converged.
 
-TrustCommit 的最初阶段，就是在 Claude ↔ Codex 的对抗式讨论中形成的。
-也就是说，agent 参与的不是后期包装，而是项目起点本身。
+---
 
-### 2. agent 的参与不只体现在写代码
+## IV. What this lifecycle log proves
 
-agent 实际参与了：
-- 方向选择
-- 痛点筛选
-- 协议架构
+It proves three things.
+
+### 1. The project was not "fully designed first, then executed"
+
+TrustCommit’s earliest stage was formed inside adversarial Claude ↔ Codex discussion.  
+That means agent participation was not added later as packaging; it was part of project genesis itself.
+
+### 2. Agent participation was not limited to coding
+
+Agents materially participated in:
+- direction selection
+- pain-point filtering
+- protocol architecture
 - hostile review
-- narrative restructure
-- judge-facing surface 调整
+- narrative restructuring
+- judge-facing surface adjustments
 
-### 3. 这是一个人类主导、agent 深度参与的 build loop
+### 3. This was a human-led, agent-deep build loop
 
-更准确的过程是：
-- Human 设边界、做判断、拒绝错误方向
-- Codex 负责大量实现、修改、推进
-- Claude 负责外部批评、对抗式评审、叙事重构
+The more accurate process was:
+- the Human set boundaries, made judgments, and rejected wrong directions
+- Codex handled a large amount of implementation, revision, and forward motion
+- Claude handled external critique, adversarial review, and narrative restructuring
 
-最准确的一句话是：
+The most accurate one-sentence summary is:
 
-**TrustCommit 不是“人类做完，agent 来使用”的项目，而是在人类主导、agent 深度参与的构建循环中诞生的项目。**
+**TrustCommit is not a project where "humans built it and agents merely use it." It was born inside a human-led build loop with deep agent participation.**
 
 ---
 
-## 五、可用于 submission 的短版
+## V. Short version for submission
 
-我们在 3 月 17 日并没有直接开始写代码，而是先通过 Claude 与 Codex 的对抗式 brainstorming，围绕 Synthesis 的主题和以太坊生态真实痛点收敛项目方向。3 月 18 日，项目进入架构收敛阶段，明确了 covenant、proof、receipt、verification 与 dispute 的机制。3 月 19 日开始形成第一版 accountable-agent stack，并完成报名与 project draft。3 月 20 日，live console 接入真实 runtime，前端、文案、public-proof 流程持续收敛，并完成 self-custody。3 月 21 日，TrustCommit 正式部署到 Base Sepolia，导出公开 happy path 与 dispute path proof，并继续接受 Claude 的 hostile prize review 与 narrative critique。整个项目的形成过程，本身就是一个真实的 agent-assisted build loop。
+On March 17, we did not begin by writing code. We began with adversarial Claude and Codex brainstorming to converge on a direction grounded in Synthesis themes and real Ethereum-ecosystem pain points. On March 18, the project entered architecture convergence, clarifying covenant, proof, receipt, verification, and dispute mechanics. On March 19, the first accountable-agent stack took shape and the team registration / project draft were completed. On March 20, the live console was connected to a real runtime, the frontend and submission narrative tightened, the public-proof flow matured, and self-custody was completed. On March 21, TrustCommit was deployed to Base Sepolia, public happy-path and dispute-path proofs were exported, and the project continued to absorb hostile prize review and narrative critique from Claude. The formation of the project itself was a real agent-assisted build loop.
