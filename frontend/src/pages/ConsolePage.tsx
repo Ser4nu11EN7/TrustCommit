@@ -785,104 +785,199 @@ export function ConsolePage() {
               </div>
 
             </div>
-
               {composeOpen ? (
-                <div style={{ border: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(6,6,6,0.98)', padding: '0.75rem', display: 'grid', gap: '0.6rem', position: 'relative', zIndex: 2 }}>
-                  <div style={{ display: 'grid', gap: '0.35rem' }}>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.58rem', letterSpacing: '0.16em', textTransform: 'uppercase', color: '#666666' }}>标题</span>
-                    <input
-                      value={draftTitle}
-                      onChange={(event) => setDraftTitle(event.target.value)}
-                      style={{
-                        backgroundColor: 'transparent',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        color: '#ffffff',
-                        padding: '0.55rem',
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: '0.62rem',
-                      }}
-                    />
+                <div
+                  style={{
+                    backgroundColor: '#000000',
+                    borderBottom: '1px solid rgba(255,255,255,0.08)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    position: 'relative',
+                    zIndex: 2,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0.85rem 1rem',
+                      borderBottom: '1px solid rgba(255,255,255,0.08)',
+                      backgroundColor: 'rgba(255,255,255,0.02)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <span
+                        style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: '0.62rem',
+                          color: '#ffffff',
+                          letterSpacing: '0.12em',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        Draft Envelope
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: '0.5rem',
+                          letterSpacing: '0.15em',
+                          textTransform: 'uppercase',
+                          color: '#666666',
+                        }}
+                      >
+                        Compose Covenant
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '2px' }}>
+                      <div style={{ width: '4px', height: '12px', backgroundColor: '#525252' }}></div>
+                      <div style={{ width: '4px', height: '12px', backgroundColor: '#a3a3a3' }}></div>
+                      <div style={{ width: '4px', height: '12px', backgroundColor: '#ffffff' }}></div>
+                    </div>
                   </div>
-                  <div style={{ display: 'grid', gap: '0.35rem' }}>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.58rem', letterSpacing: '0.16em', textTransform: 'uppercase', color: '#666666' }}>承诺轮廓</span>
-                    <select
-                      value={draftProfile}
-                      onChange={(event) => setDraftProfile(event.target.value)}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', padding: '0 1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#666666' }}>标题</span>
+                      <input
+                        value={draftTitle}
+                        onChange={(event) => setDraftTitle(event.target.value)}
+                        placeholder="输入任务标题..."
+                        style={{
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          color: '#ffffff',
+                          padding: '0.85rem 0',
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: '0.65rem',
+                          outline: 'none',
+                          width: '100%',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#666666' }}>承诺轮廓</span>
+                      <select
+                        value={draftProfile}
+                        onChange={(event) => setDraftProfile(event.target.value)}
+                        style={{
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          color: '#ffffff',
+                          padding: '0.85rem 0',
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: '0.65rem',
+                          outline: 'none',
+                          width: '100%',
+                          cursor: 'pointer',
+                          appearance: 'none',
+                        }}
+                      >
+                        <option value="structured_commitment" style={{ backgroundColor: '#000000' }}>structured_commitment</option>
+                        <option value="selection_commitment" style={{ backgroundColor: '#000000' }}>selection_commitment</option>
+                        <option value="budget_commitment" style={{ backgroundColor: '#000000' }}>budget_commitment</option>
+                        <option value="policy_commitment" style={{ backgroundColor: '#000000' }}>policy_commitment</option>
+                        <option value="remediation_commitment" style={{ backgroundColor: '#000000' }}>remediation_commitment</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '0.85rem 0' }}>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#666666', marginBottom: '0.5rem' }}>任务条款</span>
+                      <textarea
+                        value={draftInstructions}
+                        onChange={(event) => setDraftInstructions(event.target.value)}
+                        rows={4}
+                        style={{
+                          resize: 'vertical',
+                          minHeight: '4.5rem',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          color: '#a3a3a3',
+                          padding: '0',
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: '0.62rem',
+                          lineHeight: '1.6',
+                          outline: 'none',
+                          width: '100%',
+                        }}
+                      />
+                    </div>
+
+                    <div
                       style={{
-                        backgroundColor: '#000000',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        color: '#ffffff',
-                        padding: '0.55rem',
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: '0.62rem',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        borderBottom: '1px solid rgba(255,255,255,0.08)',
                       }}
                     >
-                      <option value="structured_commitment">structured_commitment</option>
-                      <option value="selection_commitment">selection_commitment</option>
-                      <option value="budget_commitment">budget_commitment</option>
-                      <option value="policy_commitment">policy_commitment</option>
-                      <option value="remediation_commitment">remediation_commitment</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'grid', gap: '0.35rem' }}>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.58rem', letterSpacing: '0.16em', textTransform: 'uppercase', color: '#666666' }}>任务条款</span>
-                    <textarea
-                      rows={4}
-                      value={draftInstructions}
-                      onChange={(event) => setDraftInstructions(event.target.value)}
-                      style={{
-                        resize: 'vertical',
-                        backgroundColor: 'transparent',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        color: '#ffffff',
-                        padding: '0.55rem',
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: '0.62rem',
-                        lineHeight: '1.6',
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                    {[
-                      { label: '奖励', value: draftReward, setter: setDraftReward },
-                      { label: '质押', value: draftStake, setter: setDraftStake },
-                      { label: '时限', value: draftDeadlineHours, setter: setDraftDeadlineHours },
-                    ].map((field) => (
-                      <div key={field.label} style={{ display: 'grid', gap: '0.35rem' }}>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.55rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#666666' }}>{field.label}</span>
-                        <input
-                          value={field.value}
-                          onChange={(event) => field.setter(event.target.value)}
+                      {[
+                        { label: '奖励', value: draftReward, setter: setDraftReward },
+                        { label: '质押', value: draftStake, setter: setDraftStake },
+                        { label: '时限', value: draftDeadlineHours, setter: setDraftDeadlineHours },
+                      ].map((field, index) => (
+                        <div
+                          key={field.label}
                           style={{
-                            backgroundColor: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            color: '#ffffff',
-                            padding: '0.5rem',
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: '0.62rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            borderRight: index < 2 ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                            padding: '0.85rem 0.5rem 0.85rem 0',
+                            paddingLeft: index > 0 ? '0.5rem' : '0',
                           }}
-                        />
-                      </div>
-                    ))}
+                        >
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.5rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#666666', marginBottom: '0.3rem' }}>{field.label}</span>
+                          <input
+                            value={field.value}
+                            onChange={(event) => field.setter(event.target.value)}
+                            style={{
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              color: '#ffffff',
+                              padding: '0',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontSize: '0.65rem',
+                              outline: 'none',
+                              width: '100%',
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
+
                   <button
                     type="button"
                     onClick={() => handleCreateTask()}
                     disabled={actionLoading === 'create'}
+                    className={actionLoading === 'create' ? '' : 'dither-hover'}
                     style={{
-                      marginTop: '0.2rem',
-                      backgroundColor: 'rgba(255,255,255,0.08)',
-                      border: '1px solid rgba(255,255,255,0.18)',
+                      backgroundColor: actionLoading === 'create' ? 'rgba(255,255,255,0.02)' : 'transparent',
+                      border: 'none',
                       color: actionLoading === 'create' ? '#666666' : '#ffffff',
-                      padding: '0.7rem',
+                      padding: '1.25rem 1rem',
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: '0.62rem',
                       textTransform: 'uppercase',
-                      letterSpacing: '0.18em',
+                      letterSpacing: '0.25em',
                       cursor: actionLoading === 'create' ? 'not-allowed' : 'pointer',
+                      textAlign: 'center',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      transition: 'all 0.2s',
                     }}
                   >
-                    {actionLoading === 'create' ? '创建中...' : '提交新任务'}
+                    {actionLoading === 'create' ? (
+                      '创建中...'
+                    ) : (
+                      <>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>{'>'}</span>
+                        提交新任务
+                      </>
+                    )}
                   </button>
                 </div>
               ) : null}
@@ -962,23 +1057,21 @@ export function ConsolePage() {
             </div>
 
             <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'grid', gap: '1rem' }}>
-              <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '1rem', alignItems: 'start' }}>
-                <div style={{ position: 'absolute', left: '16.666%', right: '16.666%', top: '0.52rem', height: '2px', backgroundColor: 'rgba(255,255,255,0.08)' }} />
-                <div style={{ position: 'absolute', left: '16.666%', right: '50%', top: '0.52rem', height: '2px', backgroundColor: sequenceSteps[0]?.complete ? '#737373' : 'transparent' }} />
-                <div style={{ position: 'absolute', left: '50%', right: '16.666%', top: '0.52rem', height: '2px', backgroundColor: sequenceSteps[1]?.complete ? '#737373' : 'transparent' }} />
+              <div style={{ position: 'relative', display: 'flex', width: '100%', marginBottom: '0.5rem' }}>
+                <div style={{ position: 'absolute', left: '16.66%', right: '16.66%', top: '0.45rem', height: '1px', backgroundColor: 'rgba(255,255,255,0.08)', zIndex: 0 }} />
+                <div style={{ position: 'absolute', left: '16.66%', width: '33.33%', top: '0.45rem', height: '1px', backgroundColor: sequenceSteps[0]?.complete ? '#ffffff' : 'transparent', zIndex: 0 }} />
+                <div style={{ position: 'absolute', left: '50%', width: '33.33%', top: '0.45rem', height: '1px', backgroundColor: sequenceSteps[1]?.complete ? '#ffffff' : 'transparent', zIndex: 0 }} />
                 {sequenceSteps.map((step) => (
-                  <div key={step.key} style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.55rem' }}>
-                      <div style={{ width: '1rem', height: '1rem', borderRadius: '9999px', backgroundColor: '#000000', border: `2px solid ${step.active || step.complete ? '#737373' : 'rgba(255,255,255,0.08)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {(step.active || step.complete) ? (
-                          <div className={step.active && !step.complete ? 'blink' : ''} style={{ width: '0.375rem', height: '0.375rem', backgroundColor: step.complete ? '#ffffff' : '#737373', borderRadius: '9999px' }} />
-                        ) : null}
-                      </div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.72rem', color: step.active ? '#ffffff' : '#a3a3a3', letterSpacing: '0.02em' }}>
-                        {step.label}
-                      </div>
+                  <div key={step.key} style={{ flex: 1, position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ width: '1rem', height: '1rem', borderRadius: '9999px', backgroundColor: '#000000', border: `1px solid ${step.active || step.complete ? '#ffffff' : 'rgba(255,255,255,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                      {(step.active || step.complete) ? (
+                        <div className={step.active && !step.complete ? 'blink' : ''} style={{ width: '0.375rem', height: '0.375rem', backgroundColor: step.complete ? '#ffffff' : '#a3a3a3', borderRadius: '9999px' }} />
+                      ) : null}
                     </div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.62rem', color: step.active ? '#a3a3a3' : '#525252', lineHeight: '1.6', paddingLeft: '1.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.68rem', color: step.active ? '#ffffff' : '#a3a3a3', letterSpacing: '0.05em', textAlign: 'center', marginBottom: '0.25rem', textTransform: 'uppercase' }}>
+                      {step.label}
+                    </div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.6rem', color: step.active ? '#a3a3a3' : '#525252', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80%' }}>
                       {step.detail}
                     </div>
                   </div>
