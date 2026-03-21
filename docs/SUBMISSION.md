@@ -74,7 +74,7 @@ Working one-liner:
 - explorer-verifiable tx hashes
 - short demo video
 - public repo
-- conversation log
+- conversation log: `docs/CONVERSATION_LOG.zh-CN.md`
 - README with architecture and receipt flow
 
 ## Current Base Sepolia Evidence

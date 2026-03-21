@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export function LandingPage() {
+  const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [timeDisplay, setTimeDisplay] = useState("系统启动 — 00:00:00");
   const [pingVal, setPingVal] = useState(12);
+  const [heroHover, setHeroHover] = useState(false);
+  const [consolePulse, setConsolePulse] = useState(false);
+  const [heroTitle, setHeroTitle] = useState("TrustCommit");
+  const [heroSubtitle, setHeroSubtitle] = useState("智能体追责层");
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -51,6 +56,79 @@ export function LandingPage() {
     const interval = setInterval(updateTime, 1000);
     updateTime();
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const titleTarget = heroHover || consolePulse ? "CONSOLE" : "TrustCommit";
+    const subtitleTarget = heroHover || consolePulse ? "实时控制台入口" : "智能体追责层";
+    const charset = " ./\\|-_~^:;=+[]{}()<>01";
+
+    let frame = 0;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const scramble = (from: string, to: string, progress: number) => {
+      const maxLength = Math.max(from.length, to.length);
+      const revealCount = Math.floor(maxLength * progress);
+      return Array.from({ length: maxLength }, (_, index) => {
+        const targetChar = to[index] ?? " ";
+        if (targetChar === " ") {
+          return " ";
+        }
+        if (index < revealCount) {
+          return targetChar;
+        }
+        return charset[Math.floor(Math.random() * charset.length)];
+      }).join("");
+    };
+
+    const tick = () => {
+      const progress = Math.min(frame / 11, 1);
+      setHeroTitle(scramble(heroTitle, titleTarget, progress));
+      setHeroSubtitle(scramble(heroSubtitle, subtitleTarget, progress));
+
+      if (progress < 1) {
+        frame += 1;
+        timeoutId = setTimeout(tick, 38);
+      } else {
+        setHeroTitle(titleTarget);
+        setHeroSubtitle(subtitleTarget);
+      }
+    };
+
+    tick();
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [heroHover, consolePulse]);
+
+  useEffect(() => {
+    let pulseTimeout: ReturnType<typeof setTimeout> | undefined;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+
+    const triggerPulse = () => {
+      setConsolePulse(true);
+      pulseTimeout = setTimeout(() => {
+        setConsolePulse(false);
+      }, 3000);
+    };
+
+    const initialTimeout = setTimeout(() => {
+      triggerPulse();
+      intervalId = setInterval(triggerPulse, 6400);
+    }, 2200);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      if (pulseTimeout) {
+        clearTimeout(pulseTimeout);
+      }
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -219,16 +297,23 @@ export function LandingPage() {
       const CHAR_SIZE = Math.max(9, Math.round(cellH * 0.75));
       ctx.font = `${CHAR_SIZE}px "Fragment Mono", monospace`;
 
-      ctx.save();
-      const cx0 = width / 2;
-      const cy0 = height / 2;
-      ctx.translate(cx0, cy0);
-      ctx.scale(zoomCurrent, zoomCurrent);
-      ctx.translate(-cx0, -cy0);
+        ctx.save();
+        const cx0 = width / 2;
+        const cy0 = height / 2;
+        ctx.translate(cx0, cy0);
+        ctx.scale(zoomCurrent, zoomCurrent);
+        ctx.translate(-cx0, -cy0);
 
-      const h1El = document.getElementById("main-heading");
-      let h1Rect: DOMRect | null = null;
-      let canvasRect: DOMRect | null = null;
+        const toScaledSpace = (sx: number, sy: number) => ({
+          x: cx0 + (sx - cx0) / zoomCurrent,
+          y: cy0 + (sy - cy0) / zoomCurrent
+        });
+
+        const scaledMouse = toScaledSpace(mouse.x, mouse.y);
+
+        const h1El = document.getElementById("main-heading");
+        let h1Rect: DOMRect | null = null;
+        let canvasRect: DOMRect | null = null;
       if (h1El && h1DistortCurrent > 0.01 && window.scrollY < window.innerHeight) {
         h1Rect = h1El.getBoundingClientRect();
         canvasRect = canvas.getBoundingClientRect();
@@ -239,14 +324,14 @@ export function LandingPage() {
         const colShift = strip ? strip.shift : 0;
 
         for (let col = 0; col < COLS; col += 1) {
-          const px = (col + colShift) * cellW + cellW / 2;
-          const py = row * cellH + cellH / 2;
+            const px = (col + colShift) * cellW + cellW / 2;
+            const py = row * cellH + cellH / 2;
 
-          const dx = px - mouse.x / zoomCurrent;
-          const dy = py - mouse.y / zoomCurrent;
-          const dist = Math.hypot(dx, dy);
-          const RADIUS = 160;
-          const affected = dist < RADIUS;
+            const dx = px - scaledMouse.x;
+            const dy = py - scaledMouse.y;
+            const dist = Math.hypot(dx, dy);
+            const RADIUS = 160;
+            const affected = dist < RADIUS;
 
           const BANDS = 6;
           const bandH = rows / BANDS;
@@ -276,11 +361,14 @@ export function LandingPage() {
             }
           }
 
-          if (h1DistortCurrent > 0.01 && h1Rect && canvasRect) {
-            const hcx = h1Rect.left + h1Rect.width / 2 - canvasRect.left;
-            const hcy = h1Rect.top + h1Rect.height / 2 - canvasRect.top;
-            const hdx = px - hcx;
-            const hdy = py - hcy;
+            if (h1DistortCurrent > 0.01 && h1Rect && canvasRect) {
+              const hCenterScreenX = h1Rect.left + h1Rect.width / 2 - canvasRect.left;
+              const hCenterScreenY = h1Rect.top + h1Rect.height / 2 - canvasRect.top;
+              const scaledHeading = toScaledSpace(hCenterScreenX, hCenterScreenY);
+              const hcx = scaledHeading.x;
+              const hcy = scaledHeading.y;
+              const hdx = px - hcx;
+              const hdy = py - hcy;
             const hd = Math.hypot(hdx, hdy);
             const falloff = Math.max(0, 1 - hd / 280);
             if (falloff > 0) {
@@ -350,69 +438,75 @@ export function LandingPage() {
         </defs>
       </svg>
 
-      <div className="relative z-10 flex min-h-screen w-full flex-col">
-        <div className="relative h-[70vh] w-full overflow-hidden border-b border-[rgba(232,230,224,0.1)] bg-[#0A0A0A]">
+        <div className="relative z-10 flex min-h-screen w-full flex-col">
+          <div className="relative h-[85vh] w-full overflow-hidden border-b border-[rgba(232,230,224,0.1)] bg-[#0A0A0A]">
           <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" />
-            <div className="pointer-events-auto absolute bottom-16 left-10 z-20 max-w-4xl md:left-20">
+            <div
+              className="pointer-events-auto absolute bottom-16 left-10 z-20 max-w-4xl md:left-20"
+              onMouseEnter={() => setHeroHover(true)}
+              onMouseLeave={() => setHeroHover(false)}
+            >
               <div
                 aria-hidden="true"
                 className="absolute -left-10 -top-12 h-40 w-[28rem] rounded-full bg-[rgba(0,0,0,0.48)] blur-3xl md:h-52 md:w-[36rem]"
               />
-              <h1
-                id="main-heading"
-                className="relative z-10 mb-6 text-5xl font-light leading-[1.05] tracking-tight text-[#E8E6E0] md:text-[5rem]"
-                style={{
-                  transform: "translateY(-10px)",
-                  textShadow:
-                    "0 2px 10px rgba(0,0,0,0.72), 0 10px 32px rgba(0,0,0,0.55), 0 0 1px rgba(255,255,255,0.14)"
+              <div
+                role="button"
+                tabIndex={0}
+                aria-label="进入实时控制台"
+                className="relative z-10 w-fit outline-none"
+                onClick={() => navigate("/console")}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    navigate("/console");
+                  }
                 }}
               >
-                TrustCommit
-              </h1>
-              <p
-                className="relative z-10 text-[0.86rem] font-medium uppercase tracking-[0.28em] text-[#B6B0A4] md:text-[0.98rem]"
-                style={{
-                  transform: "translateY(-10px)",
-                  textShadow: "0 2px 8px rgba(0,0,0,0.68), 0 6px 20px rgba(0,0,0,0.42)"
-                }}
-              >
-                智能体追责层
-              </p>
+                <h1
+                  id="main-heading"
+                  className="relative z-10 mb-6 text-5xl font-light leading-[1.05] tracking-tight text-[#E8E6E0] md:text-[5rem]"
+                  style={{
+                    transform: "translateY(-10px)",
+                    textShadow:
+                      "0 2px 10px rgba(0,0,0,0.72), 0 10px 32px rgba(0,0,0,0.55), 0 0 1px rgba(255,255,255,0.14)"
+                  }}
+                >
+                  {heroTitle}
+                </h1>
+                <p
+                  className="relative z-10 text-[0.86rem] font-medium uppercase tracking-[0.28em] text-[#B6B0A4] md:text-[0.98rem]"
+                  style={{
+                    transform: "translateY(-10px)",
+                    textShadow: "0 2px 8px rgba(0,0,0,0.68), 0 6px 20px rgba(0,0,0,0.42)"
+                  }}
+                >
+                  {heroSubtitle}
+                </p>
+              </div>
             </div>
         </div>
 
-        <div className="grid h-auto grid-cols-1 content-start gap-10 border-b border-[rgba(232,230,224,0.1)] bg-[#0A0A0A] p-10 md:h-[30vh] md:grid-cols-12 md:gap-8 md:p-20">
-          <div className="flex flex-col gap-6 md:col-span-6">
-            <div>
-              <span className="mb-3 block font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-wider text-[#888880]">
-                {timeDisplay}
-              </span>
-              <p className="bio-text max-w-none whitespace-nowrap text-[1.02rem] font-medium leading-none tracking-tight text-[#F1EEE8] md:text-[1.12rem]">
-                TrustCommit 让智能体的承诺、执行和结果都变得可验证、可质疑、可追责。
-              </p>
+          <div className="grid h-auto grid-cols-1 content-start gap-5 border-b border-[rgba(232,230,224,0.1)] bg-[#0A0A0A] px-10 py-5 md:h-[15vh] md:grid-cols-12 md:gap-x-8 md:gap-y-4 md:px-20 md:py-10">
+            <div className="flex flex-col gap-3 md:col-span-6">
+              <div>
+                <span className="mb-1.5 block font-['Fragment_Mono'] text-[0.68rem] uppercase tracking-wider text-[#888880]">
+                  {timeDisplay}
+                </span>
+                <p className="bio-text max-w-none whitespace-nowrap text-[1.02rem] font-medium leading-none tracking-tight text-[#F1EEE8] md:text-[1.12rem]">
+                  TrustCommit 让智能体的承诺、执行和结果都变得可验证、可质疑、可追责。
+                </p>
             </div>
             <div>
               <p className="text-[0.85rem] font-light text-[#888880]">为可验证执行而构建。</p>
             </div>
           </div>
 
-            <div className="flex flex-col gap-4 text-[0.95rem] font-light md:col-span-4">
-              <div className="w-fit border-t border-[rgba(232,230,224,0.14)] pt-3">
-                <span className="block font-['Fragment_Mono'] text-[0.64rem] uppercase tracking-[0.22em] text-[#888880]">
-                  PRIMARY ACCESS
-                </span>
-                <Link
-                  to="/console"
-                  className="mt-3 inline-flex items-end gap-3 text-[1.18rem] font-light tracking-[0.02em] text-[#E8E6E0] transition-all hover:opacity-70 md:text-[1.34rem]"
-                >
-                  <span className="border-b border-[rgba(232,230,224,0.24)] pb-1">进入实时控制台</span>
-                  <span className="font-['Fragment_Mono'] text-[0.72rem] text-[#9E988D]">↗</span>
-                </Link>
-              </div>
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[0.8rem] tracking-[0.08em] text-[#8E897F]">
-                <a
-                  href="https://github.com/Ser4nu11EN7/TrustCommit#readme"
-                  target="_blank"
+              <div className="flex flex-col gap-2 text-[0.95rem] font-light md:col-span-4">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-[rgba(232,230,224,0.14)] pt-1.5 text-[0.8rem] tracking-[0.08em] text-[#8E897F]">
+                  <a
+                    href="https://github.com/Ser4nu11EN7/TrustCommit#readme"
+                    target="_blank"
                   rel="noreferrer"
                   className="transition-all hover:text-[#D3CEC2]"
                 >
@@ -429,7 +523,7 @@ export function LandingPage() {
               </div>
             </div>
 
-            <div className="mt-8 flex h-full flex-col justify-between text-right font-['Fragment_Mono'] text-[0.65rem] text-[#888880] md:col-span-2 md:mt-0">
+            <div className="mt-4 flex h-full flex-col justify-between text-right font-['Fragment_Mono'] text-[0.65rem] text-[#888880] md:col-span-2 md:mt-0">
               <div>
                 PROTOCOL V1.0.0
                 <br />
