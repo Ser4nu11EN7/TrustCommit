@@ -7,6 +7,7 @@ import {
   executionWalletAccount,
   executorOwnerAccount,
   parseFlag,
+  type PreparedPublicRuntimeContext,
   preparePublicRuntimeContext,
   requireAccount
 } from "./public-runtime-context.js";
@@ -17,6 +18,21 @@ const DEFAULT_EXECUTOR_STAKE = 1_000_000_000n;
 function writeJson(outputPath: string, payload: unknown): void {
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, JSON.stringify(payload, null, 2));
+}
+
+async function writeAndConfirm(
+  client: ReturnType<typeof createWalletClient>,
+  publicClient: PreparedPublicRuntimeContext["client"],
+  params: Record<string, unknown>,
+  nonceRef?: { value: number }
+): Promise<`0x${string}`> {
+  const txHash = await client.writeContract({
+    ...params,
+    chain: null,
+    ...(nonceRef ? { nonce: nonceRef.value++ } : {})
+  } as never);
+  await publicClient.waitForTransactionReceipt({ hash: txHash });
+  return txHash;
 }
 
 async function main(): Promise<void> {
@@ -89,65 +105,96 @@ async function main(): Promise<void> {
     updateExecutionWallet: null
   };
 
+  const sharedNonce =
+    deployer.address.toLowerCase() === creator.address.toLowerCase() &&
+    deployer.address.toLowerCase() === executorOwner.address.toLowerCase() &&
+    deployer.address.toLowerCase() === executionWallet.address.toLowerCase()
+      ? {
+          value: Number(await client.getTransactionCount({ address: deployer.address, blockTag: "pending" }))
+        }
+      : undefined;
+
   if (!skipMint) {
-    txs.mintCreatorPayment = await deployerClient.writeContract({
+    txs.mintCreatorPayment = await writeAndConfirm(
+      deployerClient,
+      client,
+      {
       address: paymentTokenAddress!,
       abi: tokenArtifact.abi as readonly unknown[],
       functionName: "mint",
-      args: [creator.address, DEFAULT_CREATOR_PAYMENT],
-      chain: null
-    });
-    await client.waitForTransactionReceipt({ hash: txs.mintCreatorPayment });
+        args: [creator.address, DEFAULT_CREATOR_PAYMENT]
+      },
+      sharedNonce
+    );
 
-    txs.mintExecutorStake = await deployerClient.writeContract({
+    txs.mintExecutorStake = await writeAndConfirm(
+      deployerClient,
+      client,
+      {
       address: stakeTokenAddress!,
       abi: tokenArtifact.abi as readonly unknown[],
       functionName: "mint",
-      args: [executorOwner.address, DEFAULT_EXECUTOR_STAKE],
-      chain: null
-    });
-    await client.waitForTransactionReceipt({ hash: txs.mintExecutorStake });
+        args: [executorOwner.address, DEFAULT_EXECUTOR_STAKE]
+      },
+      sharedNonce
+    );
   }
 
   const profileHash = keccak256(toBytes("trustcommit-public-executor"));
-  txs.registerAgent = await ownerClient.writeContract({
+  txs.registerAgent = await writeAndConfirm(
+    ownerClient,
+    client,
+    {
     address: config.addresses!.trustRegistry,
     abi: registryArtifact.abi as readonly unknown[],
     functionName: "registerAgent",
-    args: [executorOwner.address, "ipfs://trustcommit-public-executor", profileHash],
-    chain: null
-  });
-  const registerReceipt = await client.waitForTransactionReceipt({ hash: txs.registerAgent });
-  const registeredLog = registerReceipt.logs.find(
-    (entry) => entry.address.toLowerCase() === config.addresses!.trustRegistry.toLowerCase()
+      args: [executorOwner.address, "ipfs://trustcommit-public-executor", profileHash]
+    },
+    sharedNonce
   );
-  if (!registeredLog) {
+  const registerReceipt = await client.waitForTransactionReceipt({ hash: txs.registerAgent });
+  const decoded = registerReceipt.logs
+    .filter((entry) => entry.address.toLowerCase() === config.addresses!.trustRegistry.toLowerCase())
+    .map((entry) => {
+      try {
+        return decodeEventLog({
+          abi: registryArtifact.abi as readonly unknown[],
+          data: entry.data,
+          topics: entry.topics
+        }) as { eventName?: string; args?: Record<string, unknown> };
+      } catch {
+        return null;
+      }
+    })
+    .find((entry) => entry?.eventName === "AgentRegistered");
+  if (!decoded) {
     throw new Error("AgentRegistered event not found in registerAgent receipt.");
   }
-  const decoded = decodeEventLog({
-    abi: registryArtifact.abi as readonly unknown[],
-    data: registeredLog.data,
-    topics: registeredLog.topics
-  }) as { args?: Record<string, unknown> };
   const agentId = Number(decoded.args?.agentId);
 
-  txs.approveStake = await ownerClient.writeContract({
+  txs.approveStake = await writeAndConfirm(
+    ownerClient,
+    client,
+    {
     address: stakeTokenAddress!,
     abi: tokenArtifact.abi as readonly unknown[],
     functionName: "approve",
-    args: [config.addresses!.trustRegistry, DEFAULT_EXECUTOR_STAKE],
-    chain: null
-  });
-  await client.waitForTransactionReceipt({ hash: txs.approveStake });
+      args: [config.addresses!.trustRegistry, DEFAULT_EXECUTOR_STAKE]
+    },
+    sharedNonce
+  );
 
-  txs.stake = await ownerClient.writeContract({
+  txs.stake = await writeAndConfirm(
+    ownerClient,
+    client,
+    {
     address: config.addresses!.trustRegistry,
     abi: registryArtifact.abi as readonly unknown[],
     functionName: "stake",
-    args: [BigInt(agentId), DEFAULT_EXECUTOR_STAKE],
-    chain: null
-  });
-  await client.waitForTransactionReceipt({ hash: txs.stake });
+      args: [BigInt(agentId), DEFAULT_EXECUTOR_STAKE]
+    },
+    sharedNonce
+  );
 
   if (executionWallet.address.toLowerCase() !== executorOwner.address.toLowerCase()) {
     const nonce = await client.readContract({
@@ -180,14 +227,17 @@ async function main(): Promise<void> {
       }
     });
 
-    txs.updateExecutionWallet = await ownerClient.writeContract({
+    txs.updateExecutionWallet = await writeAndConfirm(
+      ownerClient,
+      client,
+      {
       address: config.addresses!.trustRegistry,
       abi: registryArtifact.abi as readonly unknown[],
       functionName: "updateExecutionWallet",
-      args: [BigInt(agentId), executionWallet.address, proof],
-      chain: null
-    });
-    await client.waitForTransactionReceipt({ hash: txs.updateExecutionWallet });
+        args: [BigInt(agentId), executionWallet.address, proof]
+      },
+      sharedNonce
+    );
   }
 
   const report = {

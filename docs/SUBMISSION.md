@@ -78,3 +78,21 @@ Working one-liner:
 - public repo
 - conversation log
 - README with architecture and receipt flow
+
+## Current Base Sepolia Evidence
+
+- TrustRegistry: `0x8BC8519dcB8d09e34295d1293C45B536a9acB6Ae`
+- Covenant: `0x173Ba54B0c8Ef0D0e6Ee4905A81Ff268907A079E`
+- Shared token: `0x1EeEd8DB942FC2bE3351350b2bcC9c70cd6f4B78`
+- deploy txs:
+  - token `0xf879fe3890b42d0ea97c9aac765303af2ddc3e37fd74cb17bbf8ad15cbfc46e0`
+  - registry `0x87a717bd6c0cf5102024535aa2ea06713cf7b002b89cddfb7468a6225bf581dd`
+  - covenant `0x0aaf7ba70c58510258764b1b3fd7f94ba9c777d10f9487ee1994fe8a10c473ce`
+  - covenant role grant `0xc00ab73dc656e9c33fe196426d0a198dfc2c4466f70ec225c4bb56503664f477`
+- verified public submit flow:
+  - task `task_fd3e380d-a74d-4f42-a69b-18059b169daf`
+  - verifier `77 / 77 verified`
+- verified public dispute flow:
+  - task `task_c3bbe5fd-27c4-4cec-8f17-db021d218e70`
+  - verifier `95 / 95 verified`
+  - receipts: create, accept, submit, dispute, resolve are all present in `.trustcommit/public-proof/task_c3bbe5fd-27c4-4cec-8f17-db021d218e70/`

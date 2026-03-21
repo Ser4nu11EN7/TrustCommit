@@ -9,7 +9,10 @@ export interface DraftTask {
 }
 
 export class CreatorAgent {
-  public constructor(private readonly providers: ProviderRouter) {}
+  public constructor(
+    private readonly providers: ProviderRouter,
+    private readonly executorAgentId = Number(process.env.TC_EXECUTOR_AGENT_ID ?? 1)
+  ) {}
 
   public async createDraft(input: TaskSpec): Promise<DraftTask> {
     const result = await this.providers.generateTaskPlan(input, {
@@ -41,7 +44,7 @@ export class CreatorAgent {
         requiredStake: plan.requiredStake,
         deadlineTs: 0,
         status: "draft",
-        executorAgentId: 1,
+        executorAgentId: this.executorAgentId,
         createdBy: result.provider,
         commitmentProfile,
         evidencePolicyJson: evidencePolicy ? JSON.stringify(evidencePolicy) : null,

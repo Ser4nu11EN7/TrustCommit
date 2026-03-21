@@ -91,10 +91,29 @@ npm run runtime -- demo:remediation
 ## Contract Addresses
 
 ### Public Testnet
-- TrustRegistry: `[Pending public deployment]`
-- Covenant: `[Pending public deployment]`
-- Stake Token: `[Pending public deployment]`
-- Payment Token: `[Pending public deployment]`
+- Network: `Base Sepolia` (`chainId 84532`)
+- TrustRegistry: `0x8BC8519dcB8d09e34295d1293C45B536a9acB6Ae`
+- Covenant: `0x173Ba54B0c8Ef0D0e6Ee4905A81Ff268907A079E`
+- Stake Token: `0x1EeEd8DB942FC2bE3351350b2bcC9c70cd6f4B78`
+- Payment Token: `0x1EeEd8DB942FC2bE3351350b2bcC9c70cd6f4B78`
+- Deploy receipts:
+  - Mock token: `0xf879fe3890b42d0ea97c9aac765303af2ddc3e37fd74cb17bbf8ad15cbfc46e0`
+  - TrustRegistry: `0x87a717bd6c0cf5102024535aa2ea06713cf7b002b89cddfb7468a6225bf581dd`
+  - Covenant: `0x0aaf7ba70c58510258764b1b3fd7f94ba9c777d10f9487ee1994fe8a10c473ce`
+  - Grant `COVENANT_ROLE`: `0xc00ab73dc656e9c33fe196426d0a198dfc2c4466f70ec225c4bb56503664f477`
+
+### Public Proof Examples
+- Verified submit flow:
+  - task: `task_fd3e380d-a74d-4f42-a69b-18059b169daf`
+  - covenant: `0x7e5e5d2e38cc1c0139a4b21105694384e2d6c0ed9ab4e793d302a4a557ede09b`
+  - receipts: `create 0x86dd54c19f8f5cff6c9f03998c6602940d84e0483b9d04bf59ef6ef361323b03`, `accept 0xd9d1a2b0c1e1799e5ef9800f171d024c11d19a228c373a44eb58778cee95f304`, `submit 0x83dce5f3ce12747873064f7518b65bcd05801fa5246da6bef80eb767d066fd3e`
+  - verifier: `77 / 77 verified`
+- Verified dispute flow:
+  - task: `task_c3bbe5fd-27c4-4cec-8f17-db021d218e70`
+  - covenant: `0xc495ec810e34caaf74d18eb886066f34b39e251699511cd19ca89691c7611467`
+  - receipts: `create 0xa1b110a3683978f06e5106437ea1def6745671b254ccb00290f7df6c650647e1`, `accept 0x9eb0940b037f358e00d1adef9c80c8f411a9ed0b4c53f75deb40b1992590671d`, `submit 0x563e9015dbf375eba65486f1945967559fd85ad536e38073075b7eaeb2af20a9`, `dispute 0x0c68c5078f30b6cb4b91864b7408c186fd50b125505da429da3fce9786ad5637`, `resolve 0x590ff831de9ef02cb6af0d2cde52774c46280faf3ae0ada5ef733ff36113cfbb`
+  - verifier: `95 / 95 verified`
+  - export: `.trustcommit/public-proof/task_c3bbe5fd-27c4-4cec-8f17-db021d218e70/`
 
 ## Usage
 
@@ -293,10 +312,10 @@ All state changes emit events for off-chain indexing:
 
 ## Next Steps
 
-1. Complete public testnet deployment and record explorer links
-2. Finalize submission README, video, and track framing
+1. Record explorer links and public review bundle links in the submission draft
+2. Finalize the short demo video around the verified Base Sepolia procurement flow
 3. Layer interoperability standards such as ERC-8004 without rewriting the core contracts
-4. Upgrade the arbiter path after deployment baseline is stable
+4. Upgrade the arbiter path after the public proof story is locked
 
 ## License
 

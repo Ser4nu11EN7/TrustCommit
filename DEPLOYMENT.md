@@ -84,7 +84,23 @@ The deploy script runs [DeployTrustCommitStack.s.sol](/C:/Users/SerEN/TrustCommi
 
 ## Save the Addresses
 
-After deployment, copy the printed addresses back into `.env`:
+Current Base Sepolia deployment:
+
+```bash
+STAKE_TOKEN_ADDRESS=0x1EeEd8DB942FC2bE3351350b2bcC9c70cd6f4B78
+PAYMENT_TOKEN_ADDRESS=0x1EeEd8DB942FC2bE3351350b2bcC9c70cd6f4B78
+TRUST_REGISTRY_ADDRESS=0x8BC8519dcB8d09e34295d1293C45B536a9acB6Ae
+COVENANT_ADDRESS=0x173Ba54B0c8Ef0D0e6Ee4905A81Ff268907A079E
+ARBITER_ADDRESS=0xd30ebf0D2a65D3beEA7a63E0Fee19Adf9daa2b12
+```
+
+Deployment receipts:
+- Mock token: `0xf879fe3890b42d0ea97c9aac765303af2ddc3e37fd74cb17bbf8ad15cbfc46e0`
+- TrustRegistry: `0x87a717bd6c0cf5102024535aa2ea06713cf7b002b89cddfb7468a6225bf581dd`
+- Covenant: `0x0aaf7ba70c58510258764b1b3fd7f94ba9c777d10f9487ee1994fe8a10c473ce`
+- Grant `COVENANT_ROLE`: `0xc00ab73dc656e9c33fe196426d0a198dfc2c4466f70ec225c4bb56503664f477`
+
+If you redeploy later, copy the printed addresses back into `.env`:
 
 ```bash
 STAKE_TOKEN_ADDRESS=0x...
@@ -153,6 +169,11 @@ The script writes a structured report to:
 .trustcommit/public-proof/public-prep/public-prep.json
 ```
 
+Current prepared public executor:
+- `agentId = 3`
+- register tx: `0xefa52180c8343efdde39b9d7bd27b5da9249faa8347492e6d02f54baf0e997a6`
+- stake tx: `0xf305d6769dcdef9e5a45ac27a1a70a946ccb04cb76fa03c84681265772ebf3b6`
+
 ## Generate Public Proof
 
 After the actors are ready, generate public evidence with one of these flows:
@@ -171,14 +192,30 @@ Both flows write a portable bundle and summary file under:
 .trustcommit/public-proof/<task-id>/
 ```
 
+Current verified public examples:
+- happy path submit:
+  - task `task_fd3e380d-a74d-4f42-a69b-18059b169daf`
+  - verifier `77 / 77 verified`
+  - create `0x86dd54c19f8f5cff6c9f03998c6602940d84e0483b9d04bf59ef6ef361323b03`
+  - accept `0xd9d1a2b0c1e1799e5ef9800f171d024c11d19a228c373a44eb58778cee95f304`
+  - submit `0x83dce5f3ce12747873064f7518b65bcd05801fa5246da6bef80eb767d066fd3e`
+- dispute path:
+  - task `task_c3bbe5fd-27c4-4cec-8f17-db021d218e70`
+  - verifier `95 / 95 verified`
+  - create `0xa1b110a3683978f06e5106437ea1def6745671b254ccb00290f7df6c650647e1`
+  - accept `0x9eb0940b037f358e00d1adef9c80c8f411a9ed0b4c53f75deb40b1992590671d`
+  - submit `0x563e9015dbf375eba65486f1945967559fd85ad536e38073075b7eaeb2af20a9`
+  - dispute `0x0c68c5078f30b6cb4b91864b7408c186fd50b125505da429da3fce9786ad5637`
+  - resolve `0x590ff831de9ef02cb6af0d2cde52774c46280faf3ae0ada5ef733ff36113cfbb`
+
 Use `dispute` when you need a same-day publicly settled outcome. `finalizeCompletion` still respects the onchain 7-day dispute window on public chains.
 
 ## Post-Deploy Checklist
 
 - [ ] explorer links recorded for token, `TrustRegistry`, and `Covenant`
-- [ ] one successful runtime flow produces task creation, acceptance, submission, and either dispute+resolution or post-window finalization tx hashes
-- [ ] addresses copied into README and demo notes
-- [ ] `npm run verify:deployment` returns `"ok": true`
+- [x] one successful runtime flow produces task creation, acceptance, submission, and either dispute+resolution or post-window finalization tx hashes
+- [x] addresses copied into README and demo notes
+- [x] `npm run verify:deployment` returns `"ok": true`
 
 ## Suggested Next Step
 

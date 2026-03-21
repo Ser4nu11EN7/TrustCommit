@@ -15,9 +15,12 @@ function procurementTaskSpec(): TaskSpec {
     instructions:
       "Review the procurement brief and vendor quotes. Choose the best vendor under the stated budget, retention, and compliance constraints. Only produce a decision if the evidence trail stays consistent with the covenant.",
     outputSchema: {
+      taskTitle: "string",
       selectedVendor: "string",
+      decisionReason: "string",
       budgetAssessment: "string",
       complianceChecks: "string[]",
+      inspectedFiles: "string[]",
       summary: "string",
       notes: "string[]"
     },
@@ -52,7 +55,6 @@ async function main(): Promise<void> {
 
   const task = await runtime.createTask(procurementTaskSpec());
   await runtime.runTask(task.id);
-  const verification = await runtime.verifyTask(task.id);
 
   let finalStatus = runtime.getTask(task.id)?.status ?? "submitted";
   if (mode === "dispute") {
@@ -60,6 +62,8 @@ async function main(): Promise<void> {
     await runtime.arbiterAutoReview(task.id);
     finalStatus = runtime.getTask(task.id)?.status ?? finalStatus;
   }
+
+  const verification = await runtime.verifyTask(task.id);
 
   const exportDir = path.join(context.config.dataDir, "public-proof", task.id);
   const exported = await runtime.exportTaskBundle(task.id, exportDir);
