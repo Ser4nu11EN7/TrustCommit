@@ -83,9 +83,49 @@ npm run runtime -- demo:remediation
 
 - Deployment guide: [DEPLOYMENT.md](./DEPLOYMENT.md)
 - Submission framing: [SUBMISSION.md](./docs/SUBMISSION.md)
-- Provisional demo links:
+- Demo videos:
   - `https://www.loom.com/share/4da0c67e7c544418a061551ef095b946`
   - `https://www.loom.com/share/89a074ecbade45e0973ca6218ed2112b`
+
+### Vercel Demo Deployment
+
+The repo now includes a Vercel-ready layout for the React console plus the Node runtime API.
+
+- Vercel serves the frontend from `frontend/dist`
+- the runtime API is exposed through `api/[[...path]].ts`
+- on Vercel, runtime state automatically falls back to `/tmp/trustcommit`
+- this is suitable for demo and judging flows, not durable production storage
+
+Minimum Vercel environment variables:
+
+```bash
+OPENAI_API_KEY=...
+ANTHROPIC_API_KEY=...
+TC_PRIMARY_PROVIDER=openai
+TC_FALLBACK_PROVIDER=claude
+TC_RPC_URL=https://sepolia.base.org
+TC_CHAIN_ID=84532
+PAYMENT_TOKEN_ADDRESS=0x1EeEd8DB942FC2bE3351350b2bcC9c70cd6f4B78
+STAKE_TOKEN_ADDRESS=0x1EeEd8DB942FC2bE3351350b2bcC9c70cd6f4B78
+TRUST_REGISTRY_ADDRESS=0x8BC8519dcB8d09e34295d1293C45B536a9acB6Ae
+COVENANT_ADDRESS=0x173Ba54B0c8Ef0D0e6Ee4905A81Ff268907A079E
+TC_CREATOR_ADDRESS=...
+TC_CREATOR_PRIVATE_KEY=...
+TC_EXECUTOR_ADDRESS=...
+TC_EXECUTOR_PRIVATE_KEY=...
+TC_EXECUTOR_OWNER_ADDRESS=...
+TC_EXECUTOR_OWNER_PRIVATE_KEY=...
+TC_EXECUTION_WALLET_ADDRESS=...
+TC_EXECUTION_WALLET_PRIVATE_KEY=...
+TC_ARBITER_ADDRESS=0xd30ebf0D2a65D3beEA7a63E0Fee19Adf9daa2b12
+TC_ARBITER_PRIVATE_KEY=...
+```
+
+Build locally with:
+
+```bash
+npm run vercel:build
+```
 
 ### Key Features
 

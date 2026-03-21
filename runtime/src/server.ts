@@ -1,19 +1,7 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import { URL } from "node:url";
-import type { TaskSpec } from "./core/types.js";
+import { handleRuntimeApiRequest } from "./http-handler.js";
 import { TrustCommitRuntime } from "./runtime.js";
-
-function sanitizeErrorMessage(message: string): string {
-  let sanitized = message;
-  for (const envName of ["OPENAI_API_KEY", "ANTHROPIC_API_KEY"]) {
-    const secret = process.env[envName];
-    if (secret) {
-      sanitized = sanitized.split(secret).join("[REDACTED]");
-    }
-  }
-  return sanitized.slice(0, 240);
-}
 
 function jsonResponse(response: http.ServerResponse, statusCode: number, payload: unknown): void {
   response.writeHead(statusCode, {
@@ -38,189 +26,25 @@ async function readJsonBody(request: http.IncomingMessage): Promise<Record<strin
   return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
 }
 
-function parseTaskSpec(body: Record<string, unknown>): TaskSpec {
-  if (typeof body.title !== "string" || typeof body.instructions !== "string") {
-    throw new Error("title and instructions are required");
-  }
-
-  const outputSchema = typeof body.outputSchema === "object" && body.outputSchema ? (body.outputSchema as Record<string, string>) : {
-    taskTitle: "string",
-    summary: "string",
-    inspectedFiles: "string[]",
-    notes: "string[]"
-  };
-
-  return {
-    title: body.title,
-    instructions: body.instructions,
-    outputSchema,
-    reward: Number(body.reward ?? 10_000_000),
-    requiredStake: Number(body.requiredStake ?? 500_000_000),
-    deadlineHours: Number(body.deadlineHours ?? 24),
-    commitmentProfile: typeof body.commitmentProfile === "string" ? body.commitmentProfile : null,
-    evidencePolicy:
-      typeof body.evidencePolicy === "object" && body.evidencePolicy
-        ? {
-            requiredPaths: Array.isArray((body.evidencePolicy as { requiredPaths?: unknown }).requiredPaths)
-              ? ((body.evidencePolicy as { requiredPaths: unknown[] }).requiredPaths.filter(
-                  (entry): entry is string => typeof entry === "string"
-                ))
-              : [],
-            rationale: Array.isArray((body.evidencePolicy as { rationale?: unknown }).rationale)
-              ? ((body.evidencePolicy as { rationale: unknown[] }).rationale.filter(
-                  (entry): entry is string => typeof entry === "string"
-                ))
-              : []
-          }
-        : null
-  };
-}
-
-function routeTaskId(pathname: string): string | null {
-  const match = /^\/tasks\/([^/]+)$/.exec(pathname);
-  return match?.[1] ?? null;
-}
-
-function routeTaskAction(pathname: string, action: string): string | null {
-  const match = new RegExp(`^/tasks/([^/]+)/${action}$`).exec(pathname);
-  return match?.[1] ?? null;
-}
-
 export async function startHttpServer(port = Number(process.env.PORT ?? 3000), host = "127.0.0.1") {
   const runtime = new TrustCommitRuntime();
   await runtime.init();
 
   const server = http.createServer(async (request, response) => {
-    try {
-      const method = request.method ?? "GET";
-      const url = new URL(request.url ?? "/", `http://${host}:${port}`);
-      const pathname =
-        url.pathname === "/api"
-          ? "/"
-          : url.pathname.startsWith("/api/")
-            ? url.pathname.slice(4)
-            : url.pathname;
+    const body = request.method === "POST" ? await readJsonBody(request) : undefined;
+    const result = await handleRuntimeApiRequest(runtime, {
+      method: request.method,
+      url: request.url ?? `http://${host}:${port}/`,
+      body
+    });
 
-      if (method === "OPTIONS") {
-        response.writeHead(204, {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Headers": "Content-Type",
-          "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
-        });
-        response.end();
-        return;
-      }
-
-      if (method === "GET" && pathname === "/health") {
-        const health = await runtime.getProviderHealth(url.searchParams.get("refresh") === "1");
-        jsonResponse(response, 200, {
-          ok: true,
-          chainId: runtime.config.chainId ?? null,
-          rpcUrl: runtime.config.rpcUrl,
-          providers: health
-        });
-        return;
-      }
-
-      if (method === "GET" && pathname === "/agent/manifest") {
-        jsonResponse(response, 200, {
-          ok: true,
-          manifest: runtime.getAgentManifest()
-        });
-        return;
-      }
-
-      if (method === "GET" && pathname === "/tasks") {
-        jsonResponse(response, 200, {
-          ok: true,
-          tasks: runtime.listTasks()
-        });
-        return;
-      }
-
-      const taskId = routeTaskId(pathname);
-      if (method === "GET" && taskId) {
-        const details = runtime.getTaskDetails(taskId);
-        if (!details) {
-          jsonResponse(response, 404, { ok: false, error: "Task not found" });
-          return;
-        }
-        jsonResponse(response, 200, { ok: true, ...details });
-        return;
-      }
-
-      if (method === "POST" && pathname === "/tasks") {
-        const body = await readJsonBody(request);
-        const task = await runtime.createTask(parseTaskSpec(body));
-        jsonResponse(response, 201, { ok: true, task });
-        return;
-      }
-
-      const runTaskId = routeTaskAction(pathname, "run");
-      if (method === "POST" && runTaskId) {
-        const task = await runtime.runTask(runTaskId);
-        jsonResponse(response, 200, { ok: true, task });
-        return;
-      }
-
-      const verifyTaskId = routeTaskAction(pathname, "verify");
-      if (method === "GET" && verifyTaskId) {
-        const report = await runtime.verifyTask(verifyTaskId);
-        jsonResponse(response, 200, { ok: true, report });
-        return;
-      }
-
-      const exportTaskId = routeTaskAction(pathname, "export");
-      if (method === "POST" && exportTaskId) {
-        const body = await readJsonBody(request);
-        const out = typeof body.out === "string" ? body.out : undefined;
-        const result = await runtime.exportTaskBundle(exportTaskId, out);
-        jsonResponse(response, 200, { ok: true, result });
-        return;
-      }
-
-      const finalizeTaskId = routeTaskAction(pathname, "finalize");
-      if (method === "POST" && finalizeTaskId) {
-        const task = await runtime.finalizeTask(finalizeTaskId);
-        jsonResponse(response, 200, { ok: true, task });
-        return;
-      }
-
-      const disputeTaskId = routeTaskAction(pathname, "dispute");
-      if (method === "POST" && disputeTaskId) {
-        const body = await readJsonBody(request);
-        const reason = typeof body.reason === "string" ? body.reason : "";
-        if (!reason) {
-          throw new Error("reason is required");
-        }
-        const task = await runtime.disputeTask(disputeTaskId, reason);
-        jsonResponse(response, 200, { ok: true, task });
-        return;
-      }
-
-      const arbiterTaskId = routeTaskAction(pathname, "arbiter");
-      if (method === "POST" && arbiterTaskId) {
-        const body = await readJsonBody(request);
-        if (body.mode === "auto") {
-          const task = await runtime.arbiterAutoReview(arbiterTaskId);
-          jsonResponse(response, 200, { ok: true, task });
-          return;
-        }
-        const winner = body.winner === "creator" ? "creator" : body.winner === "executor" ? "executor" : null;
-        const reason = typeof body.reason === "string" ? body.reason : "";
-        if (!winner || !reason) {
-          throw new Error("winner and reason are required");
-        }
-        const task = await runtime.arbiterReview(arbiterTaskId, winner, reason);
-        jsonResponse(response, 200, { ok: true, task });
-        return;
-      }
-
-      jsonResponse(response, 404, { ok: false, error: "Not found" });
-    } catch (error) {
-      const message = error instanceof Error ? sanitizeErrorMessage(error.message) : "Unknown error";
-      jsonResponse(response, 400, { ok: false, error: message });
+    response.writeHead(result.statusCode, result.headers);
+    if (typeof result.payload === "undefined") {
+      response.end();
+      return;
     }
+
+    response.end(JSON.stringify(result.payload, null, 2));
   });
 
   await new Promise<void>((resolve) => {

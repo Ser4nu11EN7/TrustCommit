@@ -12,5 +12,5 @@
     "rootDir": ".",
     "types": ["node"]
   },
-  "include": ["runtime/src/**/*.ts", "runtime/test/**/*.test.ts", "scripts/**/*.ts"]
+  "include": ["runtime/src/**/*.ts", "runtime/test/**/*.test.ts", "scripts/**/*.ts", "api/**/*.ts"]
 }

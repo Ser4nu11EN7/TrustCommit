@@ -3,11 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "tsx --test runtime/test/**/*.test.ts",
     "runtime": "tsx runtime/src/cli.ts",
     "server": "tsx runtime/src/cli.ts server:start",
+    "frontend:build": "npm --prefix frontend run build",
+    "vercel:install": "npm install && npm --prefix frontend install",
+    "vercel:build": "npm run build && npm run frontend:build",
     "console:dev": "node scripts/dev-console.mjs",
     "preflight:public": "tsx scripts/public-preflight.ts",
     "prepare:public": "tsx scripts/prepare-public-demo.ts",
