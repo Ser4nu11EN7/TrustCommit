@@ -2,9 +2,12 @@
 import { useEffect, useMemo, useState } from 'react';
 
 const ENV_API_BASE = (import.meta.env.VITE_RUNTIME_API_URL as string | undefined)?.replace(/\/+$/, '');
+const LOCAL_API_BASE_CANDIDATES = import.meta.env.DEV
+  ? ['http://127.0.0.1:3000', 'http://127.0.0.1:3100']
+  : [];
 const API_BASE_CANDIDATES = Array.from(
   new Set(
-    [ENV_API_BASE, '/api', 'http://127.0.0.1:3000', 'http://127.0.0.1:3100'].filter(Boolean)
+    [ENV_API_BASE, '/api', ...LOCAL_API_BASE_CANDIDATES].filter(Boolean)
   )
 );
 

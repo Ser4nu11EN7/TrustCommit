@@ -16,13 +16,13 @@
 ## 提交材料
 
 - [x] README
-  - [README.md](/C:/Users/SerEN/TrustCommit/README.md)
+  - [README.md](../README.md)
 - [x] 提交 framing
-  - [SUBMISSION.md](/C:/Users/SerEN/TrustCommit/docs/SUBMISSION.md)
+  - [SUBMISSION.md](./SUBMISSION.md)
 - [x] 评审证据包
-  - [JUDGE_EVIDENCE_PACK.zh-CN.md](/C:/Users/SerEN/TrustCommit/docs/JUDGE_EVIDENCE_PACK.zh-CN.md)
+  - [JUDGE_EVIDENCE_PACK.zh-CN.md](./JUDGE_EVIDENCE_PACK.zh-CN.md)
 - [x] 共创 / 对话记录
-  - [CONVERSATION_LOG.zh-CN.md](/C:/Users/SerEN/TrustCommit/docs/CONVERSATION_LOG.zh-CN.md)
+  - [CONVERSATION_LOG.zh-CN.md](./CONVERSATION_LOG.zh-CN.md)
 - [ ] Demo 视频链接已填好
 - [ ] 若公开站可交互，在线前端与在线 runtime 链接已填好
 

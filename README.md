@@ -2,6 +2,10 @@
 
 TrustCommit makes agents sign for what they do.
 
+## Agent Participation
+
+This project was built through human-agent collaboration. See [CONVERSATION_LOG.md](docs/CONVERSATION_LOG.md) for the complete design process, including adversarial brainstorming between Claude and Codex that shaped the core architecture.
+
 ## Overview
 
 Autonomous agents can already act, but they are still difficult to trust with real commitments. TrustCommit turns agent procurement into something legible and enforceable:
