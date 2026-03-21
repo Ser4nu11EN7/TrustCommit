@@ -4,12 +4,12 @@ import { Link, useNavigate } from "react-router-dom";
 export function LandingPage() {
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [timeDisplay, setTimeDisplay] = useState("系统启动 — 00:00:00");
+  const [timeDisplay, setTimeDisplay] = useState("SYSTEM INIT — 00:00:00");
   const [pingVal, setPingVal] = useState(12);
   const [heroHover, setHeroHover] = useState(false);
   const [consolePulse, setConsolePulse] = useState(false);
   const [heroTitle, setHeroTitle] = useState("TrustCommit");
-  const [heroSubtitle, setHeroSubtitle] = useState("智能体追责层");
+  const [heroSubtitle, setHeroSubtitle] = useState("AGENT ACCOUNTABILITY LAYER");
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -42,13 +42,13 @@ export function LandingPage() {
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      const timeString = now.toLocaleTimeString("zh-CN", {
+      const timeString = now.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
         timeZoneName: "short"
       });
-      setTimeDisplay(`系统在线 — ${timeString}`);
+      setTimeDisplay(`SYSTEM ONLINE — ${timeString}`);
       if (Math.random() > 0.8) {
         setPingVal(8 + Math.floor(Math.random() * 14));
       }
@@ -60,7 +60,7 @@ export function LandingPage() {
 
   useEffect(() => {
     const titleTarget = heroHover || consolePulse ? "CONSOLE" : "TrustCommit";
-    const subtitleTarget = heroHover || consolePulse ? "实时控制台入口" : "智能体追责层";
+    const subtitleTarget = heroHover || consolePulse ? "LIVE CONSOLE ACCESS" : "AGENT ACCOUNTABILITY LAYER";
     const charset = " ./\\|-_~^:;=+[]{}()<>01";
 
     let frame = 0;
@@ -453,7 +453,7 @@ export function LandingPage() {
               <div
                 role="button"
                 tabIndex={0}
-                aria-label="进入实时控制台"
+                aria-label="Enter live console"
                 className="relative z-10 w-fit outline-none"
                 onClick={() => navigate("/console")}
                 onKeyDown={(event) => {
@@ -494,11 +494,11 @@ export function LandingPage() {
                   {timeDisplay}
                 </span>
                 <p className="bio-text max-w-none whitespace-nowrap text-[1.02rem] font-medium leading-none tracking-tight text-[#F1EEE8] md:text-[1.12rem]">
-                  TrustCommit 让智能体的承诺、执行和结果都变得可验证、可质疑、可追责。
+                  TrustCommit makes agent commitments, execution, and outcomes verifiable, challengeable, and accountable.
                 </p>
             </div>
             <div>
-              <p className="text-[0.85rem] font-light text-[#888880]">为可验证执行而构建。</p>
+              <p className="text-[0.85rem] font-light text-[#888880]">Built for verifiable execution.</p>
             </div>
           </div>
 
@@ -510,7 +510,7 @@ export function LandingPage() {
                   rel="noreferrer"
                   className="transition-all hover:text-[#D3CEC2]"
                 >
-                  文档 <span className="ml-1 font-['Fragment_Mono'] text-[0.68rem]">↗</span>
+                  Docs <span className="ml-1 font-['Fragment_Mono'] text-[0.68rem]">↗</span>
                 </a>
                 <a
                   href="https://github.com/Ser4nu11EN7/TrustCommit"
@@ -527,7 +527,7 @@ export function LandingPage() {
               <div>
                 PROTOCOL V1.0.0
                 <br />
-                追责内核
+                ACCOUNTABILITY CORE
               </div>
             <div>
               SYS <span className="text-[#E8E6E0]">{pingVal}</span>ms

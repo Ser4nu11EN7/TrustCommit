@@ -5,7 +5,9 @@
 - 仓库：
   - `https://github.com/Ser4nu11EN7/TrustCommit`
 - Demo 视频：
-  - `[待填写]`
+  - `https://www.loom.com/share/4da0c67e7c544418a061551ef095b946`
+  - `https://www.loom.com/share/89a074ecbade45e0973ca6218ed2112b`
+  - `备注：当前为临时双段 demo，后续可替换为单条最终版`
 - 在线前端：
   - `[待填写]`
 - 在线 runtime API：
@@ -23,7 +25,7 @@
   - [JUDGE_EVIDENCE_PACK.zh-CN.md](./JUDGE_EVIDENCE_PACK.zh-CN.md)
 - [x] 共创 / 对话记录
   - [CONVERSATION_LOG.zh-CN.md](./CONVERSATION_LOG.zh-CN.md)
-- [ ] Demo 视频链接已填好
+- [x] Demo 视频链接已填好
 - [ ] 若公开站可交互，在线前端与在线 runtime 链接已填好
 
 ## 链上证据

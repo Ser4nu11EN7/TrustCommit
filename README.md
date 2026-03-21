@@ -83,6 +83,9 @@ npm run runtime -- demo:remediation
 
 - Deployment guide: [DEPLOYMENT.md](./DEPLOYMENT.md)
 - Submission framing: [SUBMISSION.md](./docs/SUBMISSION.md)
+- Provisional demo links:
+  - `https://www.loom.com/share/4da0c67e7c544418a061551ef095b946`
+  - `https://www.loom.com/share/89a074ecbade45e0973ca6218ed2112b`
 
 ### Key Features
 

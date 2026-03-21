@@ -78,6 +78,12 @@ Working one-liner:
 - judge evidence pack: `docs/JUDGE_EVIDENCE_PACK.zh-CN.md`
 - README with architecture and receipt flow
 
+## Current Demo Links
+
+- provisional demo part 1: `https://www.loom.com/share/4da0c67e7c544418a061551ef095b946`
+- provisional demo part 2: `https://www.loom.com/share/89a074ecbade45e0973ca6218ed2112b`
+- note: current Loom demos are temporary and may be replaced by a cleaner final recording
+
 ## Current Base Sepolia Evidence
 
 - TrustRegistry: `0x8BC8519dcB8d09e34295d1293C45B536a9acB6Ae`
