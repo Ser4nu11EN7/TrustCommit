@@ -75,6 +75,7 @@ Working one-liner:
 - short demo video
 - public repo
 - conversation log: `docs/CONVERSATION_LOG.zh-CN.md`
+- judge evidence pack: `docs/JUDGE_EVIDENCE_PACK.zh-CN.md`
 - README with architecture and receipt flow
 
 ## Current Base Sepolia Evidence
